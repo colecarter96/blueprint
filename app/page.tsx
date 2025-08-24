@@ -113,6 +113,21 @@ export default function Home() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [mobileFilterGroup, setMobileFilterGroup] = useState<string | null>(null);
   const [orientationFilter, setOrientationFilter] = useState<"all" | "vertical" | "horizontal">("all");
+  const [globalLoading, setGlobalLoading] = useState(false);
+
+  // Global loading animation component with dot-dot-dot
+  const GlobalLoadingOverlay = () => (
+    <div className="absolute inset-0 bg-[#2a2a2a] z-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="text-white text-2xl font-medium mb-4">
+          Loading
+          <span className="inline-block animate-pulse">.</span>
+          <span className="inline-block animate-pulse" style={{ animationDelay: '0.3s' }}>.</span>
+          <span className="inline-block animate-pulse" style={{ animationDelay: '0.6s' }}>.</span>
+        </div>
+      </div>
+    </div>
+  );
 
   // Add fallback state for failed embeds
   const [embedFailures, setEmbedFailures] = useState<Set<string>>(new Set());
@@ -321,6 +336,9 @@ export default function Home() {
 
   // Handle filter selection
   const handleFilterSelect = (type: string, value: string) => {
+    setGlobalLoading(true);
+    
+    // Apply filter immediately so content can load behind the overlay
     if (activeFilter?.type === type && activeFilter?.value === value) {
       // If same filter is clicked again, remove it
       setActiveFilter(null);
@@ -328,11 +346,37 @@ export default function Home() {
       // Set new filter
       setActiveFilter({ type, value });
     }
+    
+    // Hide loading overlay after 2 seconds
+    setTimeout(() => {
+      setGlobalLoading(false);
+    }, 2000);
   };
 
   // Clear all filters
   const clearFilters = () => {
+    setGlobalLoading(true);
+    
+    // Clear filter immediately so content can load behind the overlay
     setActiveFilter(null);
+    
+    // Hide loading overlay after 2 seconds
+    setTimeout(() => {
+      setGlobalLoading(false);
+    }, 2000);
+  };
+
+  // Handle orientation filter with loading
+  const handleOrientationFilter = (orientation: "all" | "vertical" | "horizontal") => {
+    setGlobalLoading(true);
+    
+    // Apply orientation filter immediately so content can load behind the overlay
+    setOrientationFilter(orientation);
+    
+    // Hide loading overlay after 2 seconds
+    setTimeout(() => {
+      setGlobalLoading(false);
+    }, 2000);
   };
 
   // Extract video ID from YouTube URL
@@ -492,30 +536,30 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <div className="flex bg-[#1a1a1a] rounded-lg p-1">
             <button
-              onClick={() => setOrientationFilter("all")}
+              onClick={() => handleOrientationFilter("all")}
               className={`px-3 py-1 text-sm rounded transition-all ${
                 orientationFilter === "all"
-                  ? "bg-blue-600 text-white"
+                  ? "bg-white text-black"
                   : "text-gray-300 hover:text-white"
               }`}
             >
               All
             </button>
             <button
-              onClick={() => setOrientationFilter("vertical")}
+              onClick={() => handleOrientationFilter("vertical")}
               className={`px-3 py-1 text-sm rounded transition-all ${
                 orientationFilter === "vertical"
-                  ? "bg-blue-600 text-white"
+                  ? "bg-white text-black"
                   : "text-gray-300 hover:text-white"
               }`}
             >
               Vertical
             </button>
             <button
-              onClick={() => setOrientationFilter("horizontal")}
+              onClick={() => handleOrientationFilter("horizontal")}
               className={`px-3 py-1 text-sm rounded transition-all ${
                 orientationFilter === "horizontal"
-                  ? "bg-blue-600 text-white"
+                  ? "bg-white text-black"
                   : "text-gray-300 hover:text-white"
               }`}
             >
@@ -540,7 +584,7 @@ export default function Home() {
                     onClick={() => handleFilterSelect('category', category)}
                     className={`block w-full text-left text-3xl font-bold transition-colors ${
                       activeFilter?.type === 'category' && activeFilter?.value === category
-                        ? 'text-blue-400'
+                        ? 'text-gray-400'
                         : 'text-white hover:text-gray-300'
                     }`}
                   >
@@ -560,7 +604,7 @@ export default function Home() {
                     onClick={() => handleFilterSelect('focus', focus)}
                     className={`block w-full text-left text-3xl font-bold transition-colors ${
                       activeFilter?.type === 'focus' && activeFilter?.value === focus
-                        ? 'text-blue-400'
+                        ? 'text-gray-500'
                         : 'text-white hover:text-gray-300'
                     }`}
                   >
@@ -580,7 +624,7 @@ export default function Home() {
                     onClick={() => handleFilterSelect('mood', mood)}
                     className={`block w-full text-left text-3xl font-bold transition-colors ${
                       activeFilter?.type === 'mood' && activeFilter?.value === mood
-                        ? 'text-blue-400'
+                        ? 'text-gray-500'
                         : 'text-white hover:text-gray-300'
                     }`}
                   >
@@ -600,7 +644,7 @@ export default function Home() {
                     onClick={() => handleFilterSelect('sponsoredContent', content)}
                     className={`block w-full text-left text-3xl font-bold transition-colors ${
                       activeFilter?.type === 'sponsoredContent' && activeFilter?.value === content
-                        ? 'text-blue-400'
+                        ? 'text-gray-500'
                         : 'text-white hover:text-gray-300'
                     }`}
                   >
@@ -624,7 +668,7 @@ export default function Home() {
                   <span className="text-sm text-gray-400 font-bold capitalize">
                     {filterType === 'sponsoredContent' ? 'Sponsored Content' : filterType}
                   </span>
-                  <span className="text-gray-400">
+                  <span className="text-gray-500">
                     {mobileFilterGroup === filterType ? '−' : '+'}
                   </span>
                 </button>
@@ -637,7 +681,7 @@ export default function Home() {
                         onClick={() => handleFilterSelect(filterType as keyof typeof filterOptions, option)}
                         className={`block w-full text-left text-base font-bold transition-colors ${
                           activeFilter?.type === filterType && activeFilter?.value === option
-                            ? 'text-blue-400'
+                            ? 'text-gray-500'
                             : 'text-white hover:text-gray-300'
                         }`}
                       >
@@ -675,7 +719,10 @@ export default function Home() {
       </div>
 
       {/* Videos Grid */}
-      <div className="px-6">
+      <div className="px-6 relative">
+        {/* Global Loading Overlay - only covers videos section */}
+        {globalLoading && <GlobalLoadingOverlay />}
+        
         <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
           {filteredVideos.map((video) => (
             <div key={video._id} className="break-inside-avoid bg-[#1a1a1a] rounded-lg overflow-hidden shadow-lg border border-[#333]">
