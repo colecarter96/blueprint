@@ -23,7 +23,8 @@ const videoSchema = new mongoose.Schema({
   sponsoredContent: String,
   rating: Number,
   url: String,
-  instaEmbed: String
+  instaEmbed: String,
+  tiktokEmbed: String
 });
 
 const Video = mongoose.model('Video', videoSchema);
@@ -75,15 +76,21 @@ async function smartImportFromCSV(csvFilePath) {
             sponsoredContent: row.sponsoredContent?.trim() || null,
             rating: parseInt(row.rating) || 7,
             url: row.url?.trim(),
-            instaEmbed: row.instaEmbed?.trim() || ''
+            instaEmbed: row.instaEmbed?.trim() || '',
+            tiktokEmbed: row.tiktokEmbed?.trim() || ''
           };
           
-          // Basic validation - only require platform, user, and url
-          if (!video.platform || !video.user || !video.url) {
+          // Basic validation - require platform and user
+          // For Instagram: either URL or instaEmbed is required
+          // For other platforms: URL is required
+          const isValidInstagram = video.platform === 'Instagram' && (video.url || video.instaEmbed);
+          const isValidOther = video.platform !== 'Instagram' && video.url;
+          
+          if (!video.platform || !video.user || (!isValidInstagram && !isValidOther)) {
             console.warn(`⚠️  Skipping row - missing required fields:`, {
               platform: video.platform,
               user: video.user,
-              url: video.url
+              url: video.url || '(not required for Instagram with embed)'
             });
             return;
           }
@@ -108,13 +115,24 @@ async function smartImportFromCSV(csvFilePath) {
     // Process each video
     for (const video of csvData) {
       try {
-        // Check if video already exists (by URL)
-        const existingVideo = await Video.findOne({ url: video.url });
+        // Check if video already exists 
+        // For Instagram: check by instaEmbed if no URL, otherwise by URL
+        // For other platforms: check by URL
+        let existingVideo;
+        if (video.platform === 'Instagram' && !video.url && video.instaEmbed) {
+          existingVideo = await Video.findOne({ instaEmbed: video.instaEmbed });
+        } else if (video.url) {
+          existingVideo = await Video.findOne({ url: video.url });
+        }
         
         if (existingVideo) {
           // Update existing video
+          const updateQuery = video.platform === 'Instagram' && !video.url ? 
+            { instaEmbed: video.instaEmbed } : 
+            { url: video.url };
+            
           await Video.updateOne(
-            { url: video.url },
+            updateQuery,
             { 
               $set: {
                 title: video.title,
@@ -125,7 +143,9 @@ async function smartImportFromCSV(csvFilePath) {
                 mood: video.mood,
                 sponsoredContent: video.sponsoredContent,
                 rating: video.rating,
+                url: video.url,
                 instaEmbed: video.instaEmbed,
+                tiktokEmbed: video.tiktokEmbed,
                 updatedAt: new Date()
               }
             }
