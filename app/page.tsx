@@ -139,6 +139,37 @@ export default function Home() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [mobileFilterGroup, setMobileFilterGroup] = useState<string | null>(null);
 
+  // Add fallback state for failed embeds
+  const [embedFailures, setEmbedFailures] = useState<Set<string>>(new Set());
+
+  // Function to mark embed as failed
+  const markEmbedFailed = (videoId: string) => {
+    setEmbedFailures(prev => new Set(prev).add(videoId));
+  };
+
+  // Function to retry embed
+  const retryEmbed = (videoId: string) => {
+    setEmbedFailures(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(videoId);
+      return newSet;
+    });
+    // Force reload of scripts
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        if (window.instgrm) {
+          window.instgrm.Embeds.process();
+        }
+        // Reload TikTok script
+        const existingScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
+        if (existingScript) {
+          existingScript.remove();
+        }
+        loadTikTokScript();
+      }, 1000);
+    }
+  };
+
   // Load Instagram embed script
   const loadInstagramScript = () => {
     // Check if we're in the browser and script doesn't already exist
@@ -204,13 +235,33 @@ export default function Home() {
     // Ensure we're in the browser environment
     if (typeof window === 'undefined') return;
     
-    // Shorter delay for local development, longer for production
-    const delay = process.env.NODE_ENV === 'production' ? 1000 : 300;
+    // Production needs more robust loading
+    const isProduction = process.env.NODE_ENV === 'production';
+    const delay = isProduction ? 2000 : 300; // Much longer delay for production
     
     const timer = setTimeout(() => {
       try {
         loadInstagramScript();
         loadTikTokScript();
+        
+        // In production, also set up retry mechanisms
+        if (isProduction) {
+          // Retry Instagram after 5 seconds if not loaded
+          setTimeout(() => {
+            if (!window.instgrm) {
+              console.log('Retrying Instagram script...');
+              loadInstagramScript();
+            }
+          }, 5000);
+          
+          // Retry TikTok after 5 seconds if not loaded
+          setTimeout(() => {
+            if (!document.querySelector('script[src*="tiktok.com/embed.js"]')) {
+              console.log('Retrying TikTok script...');
+              loadTikTokScript();
+            }
+          }, 5000);
+        }
       } catch (error) {
         console.error('Error loading initial scripts:', error);
       }
@@ -248,14 +299,19 @@ export default function Home() {
   // Re-run embed scripts when videos change
   useEffect(() => {
     if (videos.length > 0 && typeof window !== 'undefined') {
-      // Adaptive delay: shorter for local, longer for production
-      const delay = process.env.NODE_ENV === 'production' ? 1500 : 800;
+      // Production needs much longer delays and retry logic
+      const isProduction = process.env.NODE_ENV === 'production';
+      const delay = isProduction ? 3000 : 800; // Much longer for production
       
       const timer = setTimeout(() => {
         try {
           // Re-execute Instagram embeds
           if (window.instgrm) {
             window.instgrm.Embeds.process();
+          } else if (isProduction) {
+            // In production, retry loading Instagram script
+            console.log('Instagram script not found, retrying...');
+            loadInstagramScript();
           }
           
           // For TikTok, we need to reload the script to process new embeds
@@ -267,8 +323,8 @@ export default function Home() {
           const newTikTokScript = document.createElement('script');
           newTikTokScript.src = 'https://www.tiktok.com/embed.js';
           newTikTokScript.async = true;
-          // Only add crossOrigin in production
-          if (process.env.NODE_ENV === 'production') {
+          // Always use crossOrigin in production
+          if (isProduction) {
             newTikTokScript.crossOrigin = 'anonymous';
           }
           newTikTokScript.onload = () => {
@@ -276,6 +332,13 @@ export default function Home() {
           };
           newTikTokScript.onerror = () => {
             console.error('Failed to load TikTok script');
+            // In production, retry after a delay
+            if (isProduction) {
+              setTimeout(() => {
+                console.log('Retrying TikTok script...');
+                loadTikTokScript();
+              }, 3000);
+            }
           };
           document.body.appendChild(newTikTokScript);
         } catch (error) {
@@ -328,38 +391,101 @@ export default function Home() {
 
   // Render video based on platform
   const renderVideo = (video: Video) => {
+    const videoId = video._id;
+    const hasFailed = embedFailures.has(videoId);
+    
     if (video.platform === "Youtube") {
-      const videoId = getYouTubeVideoId(video.url);
-      if (!videoId) return <div>Invalid YouTube URL</div>;
+      const youtubeId = getYouTubeVideoId(video.url);
+      if (!youtubeId) return <div>Invalid YouTube URL</div>;
+      
+      if (hasFailed) {
+        return (
+          <div className="w-full h-[315px] bg-[#1a1a1a] flex items-center justify-center text-center">
+            <div>
+              <p className="text-lg font-medium text-red-400 mb-2">YouTube embed failed to load</p>
+              <p className="text-sm text-gray-400 mb-3">@{video.user}</p>
+              <button 
+                onClick={() => retryEmbed(videoId)}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        );
+      }
       
       return (
         <iframe
           width="100%"
           height="315"
-          src={`https://www.youtube.com/embed/${videoId}`}
+          src={`https://www.youtube.com/embed/${youtubeId}`}
           title={video.title}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           referrerPolicy="strict-origin-when-cross-origin"
           allowFullScreen
+          onError={() => markEmbedFailed(videoId)}
         />
       );
     } else if (video.platform === "TikTok") {
       // Extract TikTok video ID from URL
       const tiktokMatch = video.url.match(/tiktok\.com\/@[^\/]+\/video\/(\d+)/);
-      const videoId = tiktokMatch ? tiktokMatch[1] : null;
+      const tiktokId = tiktokMatch ? tiktokMatch[1] : null;
       
-      if (!videoId) return <div>Invalid TikTok URL</div>;
+      if (!tiktokId) return <div>Invalid TikTok URL</div>;
+      
+      if (hasFailed) {
+        return (
+          <div className="w-full bg-[#1a1a1a] flex items-center justify-center text-center" style={{ 
+            aspectRatio: '299/659', 
+            maxHeight: '1151px',
+            height: 'clamp(620px, 70.8vh, 974px)'
+          }}>
+            <div>
+              <p className="text-lg font-medium text-red-400 mb-2">TikTok embed failed to load</p>
+              <p className="text-sm text-gray-400 mb-3">@{video.user}</p>
+              <button 
+                onClick={() => retryEmbed(videoId)}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        );
+      }
       
       return (
-        <TikTokVideo key={videoId} video={video} videoId={videoId} />
+        <TikTokVideo key={tiktokId} video={video} videoId={tiktokId} />
       );
     } else if (video.platform === "Instagram") {
+      if (hasFailed) {
+        return (
+          <div className="w-full bg-[#1a1a1a] flex items-center justify-center text-center" style={{ 
+            aspectRatio: '1/1', 
+            maxHeight: '600px'
+          }}>
+            <div>
+              <p className="text-lg font-medium text-red-400 mb-2">Instagram embed failed to load</p>
+              <p className="text-sm text-gray-400 mb-3">@{video.user}</p>
+              <button 
+                onClick={() => retryEmbed(videoId)}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        );
+      }
+      
       return (
         <div
           dangerouslySetInnerHTML={{
             __html: video.instaEmbed
           }}
+          onError={() => markEmbedFailed(videoId)}
         />
       );
     }
