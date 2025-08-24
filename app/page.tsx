@@ -139,7 +139,11 @@ export default function Home() {
         if (existingScript) {
           existingScript.remove();
         }
-        loadTikTokScript();
+        // Create new TikTok script
+        const newScript = document.createElement('script');
+        newScript.src = 'https://www.tiktok.com/embed.js';
+        newScript.async = true;
+        document.body.appendChild(newScript);
       }, 1000);
     }
   };
