@@ -112,6 +112,7 @@ export default function Home() {
   const [activeFilter, setActiveFilter] = useState<{ type: string; value: string } | null>(null);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [mobileFilterGroup, setMobileFilterGroup] = useState<string | null>(null);
+  const [orientationFilter, setOrientationFilter] = useState<"all" | "vertical" | "horizontal">("all");
 
   // Add fallback state for failed embeds
   const [embedFailures, setEmbedFailures] = useState<Set<string>>(new Set());
@@ -237,25 +238,44 @@ export default function Home() {
     fetchVideos();
   }, []);
 
-  // Filter videos based on active filter
+  // Filter videos based on active filter and orientation
   const filteredVideos = videos.filter(video => {
-    if (!activeFilter) return true;
-    
-    switch (activeFilter.type) {
-      case 'category':
-        return video.category === activeFilter.value;
-      case 'focus':
-        return video.focus === activeFilter.value;
-      case 'mood':
-        return video.mood === activeFilter.value;
-      case 'sponsoredContent':
-        if (activeFilter.value === 'None') {
-          return video.sponsoredContent === null;
-        }
-        return video.sponsoredContent === activeFilter.value;
-      default:
-        return true;
+    // Apply category/focus/mood/sponsored filter first
+    let passesContentFilter = true;
+    if (activeFilter) {
+      switch (activeFilter.type) {
+        case 'category':
+          passesContentFilter = video.category === activeFilter.value;
+          break;
+        case 'focus':
+          passesContentFilter = video.focus === activeFilter.value;
+          break;
+        case 'mood':
+          passesContentFilter = video.mood === activeFilter.value;
+          break;
+        case 'sponsoredContent':
+          if (activeFilter.value === 'None') {
+            passesContentFilter = video.sponsoredContent === null;
+          } else {
+            passesContentFilter = video.sponsoredContent === activeFilter.value;
+          }
+          break;
+        default:
+          passesContentFilter = true;
+      }
     }
+    
+    // Apply orientation filter
+    let passesOrientationFilter = true;
+    if (orientationFilter === "vertical") {
+      // Vertical: TikTok and Instagram (not YouTube)
+      passesOrientationFilter = video.platform === "TikTok" || video.platform === "Instagram";
+    } else if (orientationFilter === "horizontal") {
+      // Horizontal: YouTube only
+      passesOrientationFilter = video.platform === "Youtube";
+    }
+    
+    return passesContentFilter && passesOrientationFilter;
   });
 
   // Process embeds when filtering changes (not on initial load)
@@ -425,8 +445,15 @@ export default function Home() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#2a2a2a] text-white">
-        <header className="p-6">
+        <header className="p-6 flex justify-between items-center">
           <h1 className="text-3xl font-bold">blueprint</h1>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-[#1a1a1a] rounded-lg p-1">
+              <span className="px-3 py-1 text-sm text-gray-500">All</span>
+              <span className="px-3 py-1 text-sm text-gray-500">Vertical</span>
+              <span className="px-3 py-1 text-sm text-gray-500">Horizontal</span>
+            </div>
+          </div>
         </header>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-xl">Loading videos...</div>
@@ -438,8 +465,15 @@ export default function Home() {
   if (error) {
     return (
       <div className="min-h-screen bg-[#2a2a2a] text-white">
-        <header className="p-6">
+        <header className="p-6 flex justify-between items-center">
           <h1 className="text-3xl font-bold">blueprint</h1>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-[#1a1a1a] rounded-lg p-1">
+              <span className="px-3 py-1 text-sm text-gray-500">All</span>
+              <span className="px-3 py-1 text-sm text-gray-500">Vertical</span>
+              <span className="px-3 py-1 text-sm text-gray-500">Horizontal</span>
+            </div>
+          </div>
         </header>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-xl text-red-400">Error: {error}</div>
@@ -451,8 +485,44 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#2a2a2a] text-white">
       {/* Header */}
-      <header className="p-6">
+      <header className="p-6 flex justify-between items-center">
         <h1 className="text-3xl font-bold">blueprint</h1>
+        
+        {/* Orientation Toggle */}
+        <div className="flex items-center gap-2">
+          <div className="flex bg-[#1a1a1a] rounded-lg p-1">
+            <button
+              onClick={() => setOrientationFilter("all")}
+              className={`px-3 py-1 text-sm rounded transition-all ${
+                orientationFilter === "all"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-300 hover:text-white"
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setOrientationFilter("vertical")}
+              className={`px-3 py-1 text-sm rounded transition-all ${
+                orientationFilter === "vertical"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-300 hover:text-white"
+              }`}
+            >
+              Vertical
+            </button>
+            <button
+              onClick={() => setOrientationFilter("horizontal")}
+              className={`px-3 py-1 text-sm rounded transition-all ${
+                orientationFilter === "horizontal"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-300 hover:text-white"
+              }`}
+            >
+              Horizontal
+            </button>
+          </div>
+        </div>
       </header>
 
       {/* Filters */}
