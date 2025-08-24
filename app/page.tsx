@@ -727,9 +727,21 @@ export default function Home() {
           {filteredVideos.map((video) => (
             <div key={video._id} className="break-inside-avoid bg-[#1a1a1a] rounded-lg overflow-hidden shadow-lg border border-[#333]">
               {/* Video Embed */}
-              <div className="w-full">
-                {renderVideo(video)}
-              </div>
+              {video.platform === "TikTok" ? (
+                <div className="w-full bg-[#1a1a1a] flex justify-center items-center h-[743px] sm:h-[600px] md:h-[743px]">
+                  <div style={{ 
+                    width: 'min(323px, 85vw)', 
+                    maxWidth: '323px',
+                    aspectRatio: '9/16' 
+                  }}>
+                    {renderVideo(video)}
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full">
+                  {renderVideo(video)}
+                </div>
+              )}
               
               {/* Video Info - Always render for all video types */}
               <div className="p-4">
