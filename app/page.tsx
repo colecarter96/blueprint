@@ -728,7 +728,7 @@ export default function Home() {
             <div key={video._id} className="break-inside-avoid bg-[#1a1a1a] rounded-lg overflow-hidden shadow-lg border border-[#333]">
               {/* Video Embed */}
               {video.platform === "TikTok" ? (
-                <div className="w-full bg-[#1a1a1a] flex justify-center items-center h-[743px] sm:h-[600px] md:h-[743px]">
+                <div className="w-full bg-[#1a1a1a] flex justify-center items-start h-[743px] sm:h-[600px] md:h-[743px]">
                   <div style={{ 
                     width: 'min(323px, 85vw)', 
                     maxWidth: '323px',
