@@ -169,7 +169,7 @@ export default function Home() {
     }
   };
 
-  // Load scripts once when component mounts
+  // Load scripts when component mounts
   useEffect(() => {
     const timer = setTimeout(() => {
       loadEmbedScripts();
@@ -177,6 +177,38 @@ export default function Home() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Additional script loading after videos are loaded (for initial page load)
+  useEffect(() => {
+    if (videos.length > 0 && !loading) {
+      // Longer delay for production to ensure everything is ready
+      const delay = process.env.NODE_ENV === 'production' ? 2000 : 1000;
+      
+      const timer = setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          // Process Instagram embeds
+          if (window.instgrm) {
+            window.instgrm.Embeds.process();
+          }
+          
+          // For TikTok, ensure script loads for initial page load
+          const existingScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
+          if (!existingScript) {
+            const newScript = document.createElement('script');
+            newScript.src = 'https://www.tiktok.com/embed.js';
+            newScript.async = true;
+            // Add production-specific attributes
+            if (process.env.NODE_ENV === 'production') {
+              newScript.crossOrigin = 'anonymous';
+            }
+            document.body.appendChild(newScript);
+          }
+        }
+      }, delay);
+
+      return () => clearTimeout(timer);
+    }
+  }, [videos, loading]); // Run when videos are loaded and loading is complete
 
   // Fetch videos from API
   useEffect(() => {
@@ -204,16 +236,16 @@ export default function Home() {
     }
   });
 
-  // Process embeds when videos change
+  // Process embeds when filtering changes (not on initial load)
   useEffect(() => {
-    if (videos.length > 0 && typeof window !== 'undefined') {
+    if (videos.length > 0 && typeof window !== 'undefined' && !loading) {
       const timer = setTimeout(() => {
         // Re-process Instagram embeds
         if (window.instgrm) {
           window.instgrm.Embeds.process();
         }
         
-        // For TikTok, reload the script to process new embeds
+        // For TikTok, reload the script to process filtered embeds
         const existingScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
         if (existingScript) {
           existingScript.remove();
@@ -223,11 +255,11 @@ export default function Home() {
         newScript.src = 'https://www.tiktok.com/embed.js';
         newScript.async = true;
         document.body.appendChild(newScript);
-      }, 1000);
+      }, 800); // Slightly faster for filter changes
 
       return () => clearTimeout(timer);
     }
-  }, [videos, filteredVideos]);
+  }, [filteredVideos]); // Only run when filtered videos change, not on initial load
 
   const fetchVideos = async () => {
     try {
