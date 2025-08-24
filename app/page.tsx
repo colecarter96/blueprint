@@ -38,6 +38,99 @@ const filterOptions = {
   sponsoredContent: ["Goods", "Services", "Events", "None"]
 };
 
+// TikTok Video Component with Loading State
+function TikTokVideo({ video, videoId }: { video: Video; videoId: string }) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    // Hide loading after TikTok embed is ready
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [videoId]);
+
+  // Add error handling for TikTok embed
+  useEffect(() => {
+    const checkTikTokScript = () => {
+      const script = document.querySelector('script[src*="tiktok.com/embed.js"]');
+      if (!script) {
+        console.log('TikTok script not found, attempting to reload...');
+        // Try to reload the script
+        const newScript = document.createElement('script');
+        newScript.src = 'https://www.tiktok.com/embed.js';
+        newScript.async = true;
+        newScript.onerror = () => {
+          console.error('Failed to load TikTok script');
+          setLoadError(true);
+        };
+        document.body.appendChild(newScript);
+      }
+    };
+
+    // Check after a delay
+    const timer = setTimeout(checkTikTokScript, 1000);
+    return () => clearTimeout(timer);
+  }, [videoId]);
+
+  if (loadError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a] text-white">
+        <div className="text-center">
+          <p className="text-lg font-medium text-red-400">Failed to load TikTok</p>
+          <p className="text-sm text-gray-400 mt-1">@{video.user}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full" style={{ 
+      aspectRatio: '299/659', 
+      maxHeight: '1151px', // Increased from 1001px by ~15%
+      height: 'clamp(620px, 70.8vh, 974px)' // Increased from clamp(539px, 61.6vh, 770px) by ~15%
+    }}>
+      {/* Loading State */}
+      {isLoading && (
+        <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a] text-white">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-3"></div>
+            <p className="text-lg font-medium">Loading TikTok...</p>
+            <p className="text-sm text-gray-400 mt-1">@{video.user}</p>
+            <p className="text-xs text-gray-500 mt-2">Video ID: {videoId}</p>
+          </div>
+        </div>
+      )}
+      
+      {/* TikTok Embed */}
+      <div
+        className={`tiktok-embed w-full h-full ${isLoading ? 'hidden' : ''}`}
+        style={{ 
+          backgroundColor: '#1a1a1a',
+          maxHeight: '1151px' // Increased from 1001px by ~15%
+        }}
+        dangerouslySetInnerHTML={{
+          __html: `<blockquote class="tiktok-embed" cite="${video.url}" data-video-id="${videoId}" style="max-width: 100%; min-width: 100%; background-color: #1a1a1a; height: 100%; max-height: 1151px;">
+            <section> 
+              <a target="_blank" title="@${video.user}" href="${video.url}">@${video.user}</a> 
+              <p></p>
+              <a target="_blank" title="♬ Original Sound" href="${video.url}">♬ Original Sound</a>
+            </section> 
+          </blockquote>`
+        }}
+      />
+    </div>
+  );
+}
+
 export default function Home() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,10 +139,50 @@ export default function Home() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [mobileFilterGroup, setMobileFilterGroup] = useState<string | null>(null);
 
+  // Load Instagram embed script
+  const loadInstagramScript = () => {
+    if (typeof window !== 'undefined' && !document.querySelector('script[src*="instagram.com/embed.js"]')) {
+      const script = document.createElement('script');
+      script.src = '//www.instagram.com/embed.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  };
+
+  // Load TikTok embed script
+  const loadTikTokScript = () => {
+    if (typeof window !== 'undefined' && !document.querySelector('script[src*="tiktok.com/embed.js"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://www.tiktok.com/embed.js';
+      script.async = true;
+      script.onload = () => {
+        console.log('Initial TikTok script loaded successfully');
+      };
+      script.onerror = () => {
+        console.error('Initial TikTok script failed to load, retrying...');
+        // Retry after a short delay
+        setTimeout(() => {
+          if (!document.querySelector('script[src*="tiktok.com/embed.js"]')) {
+            const retryScript = document.createElement('script');
+            retryScript.src = 'https://www.tiktok.com/embed.js';
+            retryScript.async = true;
+            document.body.appendChild(retryScript);
+          }
+        }, 2000);
+      };
+      document.body.appendChild(script);
+    }
+  };
+
   // Load scripts when component mounts
   useEffect(() => {
-    loadInstagramScript();
-    loadTikTokScript();
+    // Small delay to ensure component is fully mounted
+    const timer = setTimeout(() => {
+      loadInstagramScript();
+      loadTikTokScript();
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Fetch videos from API
@@ -97,39 +230,18 @@ export default function Home() {
         const newTikTokScript = document.createElement('script');
         newTikTokScript.src = 'https://www.tiktok.com/embed.js';
         newTikTokScript.async = true;
+        newTikTokScript.onload = () => {
+          console.log('TikTok script loaded successfully');
+        };
+        newTikTokScript.onerror = () => {
+          console.error('Failed to load TikTok script');
+        };
         document.body.appendChild(newTikTokScript);
       }, 1500); // Increased delay to ensure scripts are fully loaded
 
       return () => clearTimeout(timer);
     }
-  }, [videos, filteredVideos]); // Added filteredVideos dependency
-
-  // Additional effect specifically for TikTok embeds when filters change
-  useEffect(() => {
-    if (filteredVideos.length > 0) {
-      // Check if we have TikTok videos in the filtered results
-      const hasTikTokVideos = filteredVideos.some(video => video.platform === 'TikTok');
-      
-      if (hasTikTokVideos) {
-        // Small delay to ensure DOM is ready after filter changes
-        const timer = setTimeout(() => {
-          // Remove existing TikTok script
-          const existingTikTokScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
-          if (existingTikTokScript) {
-            existingTikTokScript.remove();
-          }
-          
-          // Add new TikTok script to process filtered embeds
-          const newTikTokScript = document.createElement('script');
-          newTikTokScript.src = 'https://www.tiktok.com/embed.js';
-          newTikTokScript.async = true;
-          document.body.appendChild(newTikTokScript);
-        }, 1000);
-
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [filteredVideos]); // Only run when filtered videos change
+  }, [videos, filteredVideos]); // Run when videos or filtered videos change
 
   const fetchVideos = async () => {
     try {
@@ -161,26 +273,6 @@ export default function Home() {
   // Clear all filters
   const clearFilters = () => {
     setActiveFilter(null);
-  };
-
-  // Load Instagram embed script
-  const loadInstagramScript = () => {
-    if (typeof window !== 'undefined' && !document.querySelector('script[src*="instagram.com/embed.js"]')) {
-      const script = document.createElement('script');
-      script.src = '//www.instagram.com/embed.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  };
-
-  // Load TikTok embed script
-  const loadTikTokScript = () => {
-    if (typeof window !== 'undefined' && !document.querySelector('script[src*="tiktok.com/embed.js"]')) {
-      const script = document.createElement('script');
-      script.src = 'https://www.tiktok.com/embed.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
   };
 
   // Extract video ID from YouTube URL
@@ -216,25 +308,7 @@ export default function Home() {
       if (!videoId) return <div>Invalid TikTok URL</div>;
       
       return (
-        <div className="w-full" style={{ aspectRatio: '9/16' }}>
-          <div
-            className="tiktok-embed"
-            style={{ 
-              maxWidth: '100%', 
-              minWidth: '100%',
-              backgroundColor: '#1a1a1a'
-            }}
-            dangerouslySetInnerHTML={{
-              __html: `<blockquote class="tiktok-embed" cite="${video.url}" data-video-id="${videoId}" style="max-width: 100%; min-width: 100%; background-color: #1a1a1a;">
-                <section> 
-                  <a target="_blank" title="@${video.user}" href="${video.url}">@${video.user}</a> 
-                  <p></p>
-                  <a target="_blank" title="♬ Original Sound" href="${video.url}">♬ Original Sound</a>
-                </section> 
-              </blockquote>`
-            }}
-          />
-        </div>
+        <TikTokVideo key={videoId} video={video} videoId={videoId} />
       );
     } else if (video.platform === "Instagram") {
       return (
@@ -286,23 +360,23 @@ export default function Home() {
         <h1 className="text-3xl font-bold">blueprint</h1>
       </header>
 
-      {/* Filters Section */}
-      <div className="px-6 pb-6">
-        {/* Desktop Filters - Large screens */}
+      {/* Filters */}
+      <div className="mb-8">
+        {/* Desktop Filters */}
         <div className="hidden lg:block">
-          <div className="grid grid-cols-4 gap-6">
+          <div className="grid grid-cols-4 gap-8 justify-items-center">
             {/* Categories */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">Categories</h3>
+            <div className="text-center">
+              <h3 className="text-base text-gray-400 mb-2 font-bold text-left">Categories</h3>
               <div className="space-y-2">
                 {filterOptions.category.map((category) => (
                   <button
                     key={category}
                     onClick={() => handleFilterSelect('category', category)}
-                    className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    className={`block w-full text-left text-3xl font-bold transition-colors ${
                       activeFilter?.type === 'category' && activeFilter?.value === category
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-[#1a1a1a] text-gray-300 hover:bg-[#333]'
+                        ? 'text-blue-400'
+                        : 'text-white hover:text-gray-300'
                     }`}
                   >
                     {category}
@@ -312,17 +386,17 @@ export default function Home() {
             </div>
 
             {/* Focus */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">Focus</h3>
+            <div className="text-center">
+              <h3 className="text-base text-gray-400 mb-2 font-bold text-left">Focus</h3>
               <div className="space-y-2">
                 {filterOptions.focus.map((focus) => (
                   <button
                     key={focus}
                     onClick={() => handleFilterSelect('focus', focus)}
-                    className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    className={`block w-full text-left text-3xl font-bold transition-colors ${
                       activeFilter?.type === 'focus' && activeFilter?.value === focus
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-[#1a1a1a] text-gray-300 hover:bg-[#333]'
+                        ? 'text-blue-400'
+                        : 'text-white hover:text-gray-300'
                     }`}
                   >
                     {focus}
@@ -332,17 +406,17 @@ export default function Home() {
             </div>
 
             {/* Mood */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">Mood</h3>
+            <div className="text-center">
+              <h3 className="text-base text-gray-400 mb-2 font-bold text-left">Mood</h3>
               <div className="space-y-2">
                 {filterOptions.mood.map((mood) => (
                   <button
                     key={mood}
                     onClick={() => handleFilterSelect('mood', mood)}
-                    className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    className={`block w-full text-left text-3xl font-bold transition-colors ${
                       activeFilter?.type === 'mood' && activeFilter?.value === mood
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-[#1a1a1a] text-gray-300 hover:bg-[#333]'
+                        ? 'text-blue-400'
+                        : 'text-white hover:text-gray-300'
                     }`}
                   >
                     {mood}
@@ -352,20 +426,20 @@ export default function Home() {
             </div>
 
             {/* Sponsored Content */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">Sponsored Content</h3>
+            <div className="text-center">
+              <h3 className="text-base text-gray-400 mb-2 font-bold text-left">Sponsored Content</h3>
               <div className="space-y-2">
-                {filterOptions.sponsoredContent.map((sponsored) => (
+                {filterOptions.sponsoredContent.map((content) => (
                   <button
-                    key={sponsored}
-                    onClick={() => handleFilterSelect('sponsoredContent', sponsored)}
-                    className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                      activeFilter?.type === 'sponsoredContent' && activeFilter?.value === sponsored
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-[#1a1a1a] text-gray-300 hover:bg-[#333]'
+                    key={content}
+                    onClick={() => handleFilterSelect('sponsoredContent', content)}
+                    className={`block w-full text-left text-3xl font-bold transition-colors ${
+                      activeFilter?.type === 'sponsoredContent' && activeFilter?.value === content
+                        ? 'text-blue-400'
+                        : 'text-white hover:text-gray-300'
                     }`}
                   >
-                    {sponsored}
+                    {content}
                   </button>
                 ))}
               </div>
@@ -373,57 +447,33 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Mobile Filters - Medium and small screens */}
+        {/* Mobile Filters */}
         <div className="lg:hidden">
-          <div className="relative">
-            <button
-              onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
-              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-3 text-left flex items-center justify-between"
-            >
-              <span className="text-gray-300">
-                {activeFilter ? `${activeFilter.type}: ${activeFilter.value}` : 'Select Filter'}
-              </span>
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${mobileFilterOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {mobileFilterOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg shadow-lg z-10">
-                {!mobileFilterGroup ? (
-                  // First layer - Filter groups
-                  <div className="p-2">
-                    {Object.entries(filterOptions).map(([group, options]) => (
-                      <button
-                        key={group}
-                        onClick={() => setMobileFilterGroup(group)}
-                        className="block w-full text-left px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-[#333] transition-colors"
-                      >
-                        {group.charAt(0).toUpperCase() + group.slice(1)} ({options.length})
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  // Second layer - Filter options
-                  <div className="p-2">
-                    <button
-                      onClick={() => setMobileFilterGroup(null)}
-                      className="block w-full text-left px-3 py-2 rounded-lg text-sm text-blue-400 hover:bg-[#333] transition-colors mb-2"
-                    >
-                      ← Back to groups
-                    </button>
-                    {filterOptions[mobileFilterGroup as keyof typeof filterOptions].map((option) => (
+          <div className="space-y-2">
+            {Object.entries(filterOptions).map(([filterType, options]) => (
+              <div key={filterType} className="border border-gray-600 rounded-lg">
+                <button
+                  onClick={() => setMobileFilterGroup(mobileFilterGroup === filterType ? null : filterType)}
+                  className="flex items-center justify-between w-full p-3 text-left"
+                >
+                  <span className="text-sm text-gray-400 font-bold capitalize">
+                    {filterType === 'sponsoredContent' ? 'Sponsored Content' : filterType}
+                  </span>
+                  <span className="text-gray-400">
+                    {mobileFilterGroup === filterType ? '−' : '+'}
+                  </span>
+                </button>
+                
+                {mobileFilterGroup === filterType && (
+                  <div className="pl-4 space-y-2 pb-3">
+                    {options.map((option) => (
                       <button
                         key={option}
-                        onClick={() => {
-                          handleFilterSelect(mobileFilterGroup, option);
-                          setMobileFilterOpen(false);
-                          setMobileFilterGroup(null);
-                        }}
-                        className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                          activeFilter?.type === mobileFilterGroup && activeFilter?.value === option
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-300 hover:bg-[#333]'
+                        onClick={() => handleFilterSelect(filterType as keyof typeof filterOptions, option)}
+                        className={`block w-full text-left text-base font-bold transition-colors ${
+                          activeFilter?.type === filterType && activeFilter?.value === option
+                            ? 'text-blue-400'
+                            : 'text-white hover:text-gray-300'
                         }`}
                       >
                         {option}
@@ -432,30 +482,31 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            )}
+            ))}
           </div>
         </div>
+      </div>
 
-        {/* Active Filter Display and Clear Button */}
+      {/* Filter Info - Below Filters, Above Videos, Far Right */}
+      <div className="flex justify-end mb-6">
         {activeFilter && (
-          <div className="mt-4 flex items-center gap-3">
-            <span className="text-sm text-gray-400">Active filter:</span>
-            <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm">
-              {activeFilter.type}: {activeFilter.value}
-            </span>
-            <button
-              onClick={clearFilters}
-              className="text-gray-400 hover:text-white text-sm underline"
-            >
-              Clear all
-            </button>
+          <div className="text-right">
+            <div className="text-white text-sm mb-2">
+              Showing {filteredVideos.length} of {videos.length} videos
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <span className="text-gray-400 text-sm">
+                Filtered by {activeFilter.type}: {activeFilter.value}
+              </span>
+              <button
+                onClick={clearFilters}
+                className="text-blue-400 hover:text-blue-300 text-sm underline"
+              >
+                Clear
+              </button>
+            </div>
           </div>
         )}
-
-        {/* Results Count */}
-        <div className="mt-4 text-sm text-gray-400">
-          Showing {filteredVideos.length} of {videos.length} videos
-        </div>
       </div>
 
       {/* Videos Grid */}
@@ -468,7 +519,7 @@ export default function Home() {
                 {renderVideo(video)}
               </div>
               
-              {/* Video Info */}
+              {/* Video Info - Always render for all video types */}
               <div className="p-4">
                 {/* Platform and User */}
                 <div className="flex items-center justify-between mb-3">
