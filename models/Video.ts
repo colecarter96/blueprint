@@ -13,6 +13,7 @@ export interface IVideo {
   rating: number;
   url: string;
   instaEmbed: string;
+  tiktokEmbed: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,6 +71,11 @@ const VideoSchema = new mongoose.Schema<IVideo>(
       required: true,
     },
     instaEmbed: {
+      type: String,
+      required: false,
+      default: "",
+    },
+    tiktokEmbed: {
       type: String,
       required: false,
       default: "",

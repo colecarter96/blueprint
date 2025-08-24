@@ -28,6 +28,7 @@ interface Video {
   rating: number;
   url: string;
   instaEmbed: string;
+  tiktokEmbed: string;
 }
 
 // Filter options
@@ -38,55 +39,38 @@ const filterOptions = {
   sponsoredContent: ["Goods", "Services", "Events", "None"]
 };
 
-// TikTok Video Component with Loading State
-function TikTokVideo({ video, videoId }: { video: Video; videoId: string }) {
+// TikTok Video Component - Simplified and Reliable
+function TikTokVideo({ video }: { video: Video }) {
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    // Hide loading after TikTok embed is ready
+    // Simple loading timeout
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 2000);
+    }, 1500);
 
     return () => clearTimeout(timer);
-  }, [videoId]);
+  }, [video._id]);
 
-  // Add error handling for TikTok embed
-  useEffect(() => {
-    const checkTikTokScript = () => {
-      const script = document.querySelector('script[src*="tiktok.com/embed.js"]');
-      if (!script) {
-        console.log('TikTok script not found, attempting to reload...');
-        // Try to reload the script
-        const newScript = document.createElement('script');
-        newScript.src = 'https://www.tiktok.com/embed.js';
-        newScript.async = true;
-        newScript.onerror = () => {
-          console.error('Failed to load TikTok script');
-          setLoadError(true);
-        };
-        document.body.appendChild(newScript);
-      }
-    };
-
-    // Check after a delay
-    const timer = setTimeout(checkTikTokScript, 1000);
-    return () => clearTimeout(timer);
-  }, [videoId]);
-
-  if (loadError) {
+  // If we have full embed HTML, use it; otherwise show fallback
+  if (!video.tiktokEmbed || video.tiktokEmbed.trim() === '') {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a] text-white">
-        <div className="text-center">
-          <p className="text-lg font-medium text-red-400">Failed to load TikTok</p>
-          <p className="text-sm text-gray-400 mt-1">@{video.user}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+      <div className="w-full bg-[#1a1a1a] flex items-center justify-center text-center" style={{ 
+        aspectRatio: '299/659', 
+        maxHeight: '1151px',
+        height: 'clamp(620px, 70.8vh, 974px)'
+      }}>
+        <div>
+          <p className="text-lg font-medium text-yellow-400 mb-2">TikTok embed not available</p>
+          <p className="text-sm text-gray-400 mb-3">@{video.user}</p>
+          <a 
+            href={video.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Retry
-          </button>
+            View on TikTok
+          </a>
         </div>
       </div>
     );
@@ -95,8 +79,8 @@ function TikTokVideo({ video, videoId }: { video: Video; videoId: string }) {
   return (
     <div className="w-full" style={{ 
       aspectRatio: '299/659', 
-      maxHeight: '1151px', // Increased from 1001px by ~15%
-      height: 'clamp(620px, 70.8vh, 974px)' // Increased from clamp(539px, 61.6vh, 770px) by ~15%
+      maxHeight: '1151px',
+      height: 'clamp(620px, 70.8vh, 974px)'
     }}>
       {/* Loading State */}
       {isLoading && (
@@ -105,26 +89,16 @@ function TikTokVideo({ video, videoId }: { video: Video; videoId: string }) {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-3"></div>
             <p className="text-lg font-medium">Loading TikTok...</p>
             <p className="text-sm text-gray-400 mt-1">@{video.user}</p>
-            <p className="text-xs text-gray-500 mt-2">Video ID: {videoId}</p>
           </div>
         </div>
       )}
       
-      {/* TikTok Embed */}
+      {/* TikTok Embed - Use full embed HTML */}
       <div
-        className={`tiktok-embed w-full h-full ${isLoading ? 'hidden' : ''}`}
-        style={{ 
-          backgroundColor: '#1a1a1a',
-          maxHeight: '1151px' // Increased from 1001px by ~15%
-        }}
+        className={`w-full h-full ${isLoading ? 'hidden' : ''}`}
+        style={{ backgroundColor: '#1a1a1a' }}
         dangerouslySetInnerHTML={{
-          __html: `<blockquote class="tiktok-embed" cite="${video.url}" data-video-id="${videoId}" style="max-width: 100%; min-width: 100%; background-color: #1a1a1a; height: 100%; max-height: 1151px;">
-            <section> 
-              <a target="_blank" title="@${video.user}" href="${video.url}">@${video.user}</a> 
-              <p></p>
-              <a target="_blank" title="♬ Original Sound" href="${video.url}">♬ Original Sound</a>
-            </section> 
-          </blockquote>`
+          __html: video.tiktokEmbed
         }}
       />
     </div>
@@ -170,102 +144,32 @@ export default function Home() {
     }
   };
 
-  // Load Instagram embed script
-  const loadInstagramScript = () => {
-    // Check if we're in the browser and script doesn't already exist
-    if (typeof window !== 'undefined' && !document.querySelector('script[src*="instagram.com/embed.js"]')) {
-      try {
-        const script = document.createElement('script');
-        script.src = '//www.instagram.com/embed.js';
-        script.async = true;
-        // Only add crossOrigin in production
-        if (process.env.NODE_ENV === 'production') {
-          script.crossOrigin = 'anonymous';
-        }
-        document.body.appendChild(script);
-      } catch (error) {
-        console.error('Failed to load Instagram script:', error);
-      }
-    }
-  };
-
-  // Load TikTok embed script
-  const loadTikTokScript = () => {
-    // Check if we're in the browser and script doesn't already exist
-    if (typeof window !== 'undefined' && !document.querySelector('script[src*="tiktok.com/embed.js"]')) {
-      try {
-        const script = document.createElement('script');
-        script.src = 'https://www.tiktok.com/embed.js';
-        script.async = true;
-        // Only add crossOrigin in production
-        if (process.env.NODE_ENV === 'production') {
-          script.crossOrigin = 'anonymous';
-        }
-        script.onload = () => {
-          console.log('Initial TikTok script loaded successfully');
-        };
-        script.onerror = () => {
-          console.error('Initial TikTok script failed to load, retrying...');
-          // Retry after a short delay
-          setTimeout(() => {
-            if (!document.querySelector('script[src*="tiktok.com/embed.js"]')) {
-              try {
-                const retryScript = document.createElement('script');
-                retryScript.src = 'https://www.tiktok.com/embed.js';
-                retryScript.async = true;
-                if (process.env.NODE_ENV === 'production') {
-                  retryScript.crossOrigin = 'anonymous';
-                }
-                document.body.appendChild(retryScript);
-              } catch (retryError) {
-                console.error('Retry failed:', retryError);
-              }
-            }
-          }, 2000);
-        };
-        document.body.appendChild(script);
-      } catch (error) {
-        console.error('Failed to load TikTok script:', error);
-      }
-    }
-  };
-
-  // Load scripts when component mounts
-  useEffect(() => {
-    // Ensure we're in the browser environment
+  // Simplified script loading
+  const loadEmbedScripts = () => {
     if (typeof window === 'undefined') return;
-    
-    // Production needs more robust loading
-    const isProduction = process.env.NODE_ENV === 'production';
-    const delay = isProduction ? 2000 : 300; // Much longer delay for production
-    
+
+    // Load Instagram script
+    if (!document.querySelector('script[src*="instagram.com/embed.js"]')) {
+      const instagramScript = document.createElement('script');
+      instagramScript.src = '//www.instagram.com/embed.js';
+      instagramScript.async = true;
+      document.body.appendChild(instagramScript);
+    }
+
+    // Load TikTok script
+    if (!document.querySelector('script[src*="tiktok.com/embed.js"]')) {
+      const tiktokScript = document.createElement('script');
+      tiktokScript.src = 'https://www.tiktok.com/embed.js';
+      tiktokScript.async = true;
+      document.body.appendChild(tiktokScript);
+    }
+  };
+
+  // Load scripts once when component mounts
+  useEffect(() => {
     const timer = setTimeout(() => {
-      try {
-        loadInstagramScript();
-        loadTikTokScript();
-        
-        // In production, also set up retry mechanisms
-        if (isProduction) {
-          // Retry Instagram after 5 seconds if not loaded
-          setTimeout(() => {
-            if (!window.instgrm) {
-              console.log('Retrying Instagram script...');
-              loadInstagramScript();
-            }
-          }, 5000);
-          
-          // Retry TikTok after 5 seconds if not loaded
-          setTimeout(() => {
-            if (!document.querySelector('script[src*="tiktok.com/embed.js"]')) {
-              console.log('Retrying TikTok script...');
-              loadTikTokScript();
-            }
-          }, 5000);
-        }
-      } catch (error) {
-        console.error('Error loading initial scripts:', error);
-      }
-    }, delay);
+      loadEmbedScripts();
+    }, 500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -296,59 +200,30 @@ export default function Home() {
     }
   });
 
-  // Re-run embed scripts when videos change
+  // Process embeds when videos change
   useEffect(() => {
     if (videos.length > 0 && typeof window !== 'undefined') {
-      // Production needs much longer delays and retry logic
-      const isProduction = process.env.NODE_ENV === 'production';
-      const delay = isProduction ? 3000 : 800; // Much longer for production
-      
       const timer = setTimeout(() => {
-        try {
-          // Re-execute Instagram embeds
-          if (window.instgrm) {
-            window.instgrm.Embeds.process();
-          } else if (isProduction) {
-            // In production, retry loading Instagram script
-            console.log('Instagram script not found, retrying...');
-            loadInstagramScript();
-          }
-          
-          // For TikTok, we need to reload the script to process new embeds
-          const existingTikTokScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
-          if (existingTikTokScript) {
-            existingTikTokScript.remove();
-          }
-          
-          const newTikTokScript = document.createElement('script');
-          newTikTokScript.src = 'https://www.tiktok.com/embed.js';
-          newTikTokScript.async = true;
-          // Always use crossOrigin in production
-          if (isProduction) {
-            newTikTokScript.crossOrigin = 'anonymous';
-          }
-          newTikTokScript.onload = () => {
-            console.log('TikTok script loaded successfully');
-          };
-          newTikTokScript.onerror = () => {
-            console.error('Failed to load TikTok script');
-            // In production, retry after a delay
-            if (isProduction) {
-              setTimeout(() => {
-                console.log('Retrying TikTok script...');
-                loadTikTokScript();
-              }, 3000);
-            }
-          };
-          document.body.appendChild(newTikTokScript);
-        } catch (error) {
-          console.error('Error reloading embed scripts:', error);
+        // Re-process Instagram embeds
+        if (window.instgrm) {
+          window.instgrm.Embeds.process();
         }
-      }, delay);
+        
+        // For TikTok, reload the script to process new embeds
+        const existingScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
+        if (existingScript) {
+          existingScript.remove();
+        }
+        
+        const newScript = document.createElement('script');
+        newScript.src = 'https://www.tiktok.com/embed.js';
+        newScript.async = true;
+        document.body.appendChild(newScript);
+      }, 1000);
 
       return () => clearTimeout(timer);
     }
-  }, [videos, filteredVideos]); // Run when videos or filtered videos change
+  }, [videos, filteredVideos]);
 
   const fetchVideos = async () => {
     try {
@@ -429,12 +304,6 @@ export default function Home() {
         />
       );
     } else if (video.platform === "TikTok") {
-      // Extract TikTok video ID from URL
-      const tiktokMatch = video.url.match(/tiktok\.com\/@[^\/]+\/video\/(\d+)/);
-      const tiktokId = tiktokMatch ? tiktokMatch[1] : null;
-      
-      if (!tiktokId) return <div>Invalid TikTok URL</div>;
-      
       if (hasFailed) {
         return (
           <div className="w-full bg-[#1a1a1a] flex items-center justify-center text-center" style={{ 
@@ -456,9 +325,7 @@ export default function Home() {
         );
       }
       
-      return (
-        <TikTokVideo key={tiktokId} video={video} videoId={tiktokId} />
-      );
+      return <TikTokVideo key={video._id} video={video} />;
     } else if (video.platform === "Instagram") {
       if (hasFailed) {
         return (
