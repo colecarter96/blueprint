@@ -44,10 +44,10 @@ function TikTokVideo({ video }: { video: Video }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simple loading timeout
+    // Shorter loading timeout for initial page load
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1500);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [video._id]);
@@ -181,32 +181,54 @@ export default function Home() {
   // Additional script loading after videos are loaded (for initial page load)
   useEffect(() => {
     if (videos.length > 0 && !loading) {
-      // Longer delay for production to ensure everything is ready
-      const delay = process.env.NODE_ENV === 'production' ? 2000 : 1000;
-      
-      const timer = setTimeout(() => {
+      // Multiple attempts to ensure TikTok loads on initial page load
+      const loadTikTokForInitialLoad = () => {
         if (typeof window !== 'undefined') {
           // Process Instagram embeds
           if (window.instgrm) {
             window.instgrm.Embeds.process();
           }
           
-          // For TikTok, ensure script loads for initial page load
+          // For TikTok, completely remove and reload script (same as filtering)
           const existingScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
-          if (!existingScript) {
-            const newScript = document.createElement('script');
-            newScript.src = 'https://www.tiktok.com/embed.js';
-            newScript.async = true;
-            // Add production-specific attributes
-            if (process.env.NODE_ENV === 'production') {
-              newScript.crossOrigin = 'anonymous';
-            }
-            document.body.appendChild(newScript);
+          if (existingScript) {
+            existingScript.remove();
           }
+          
+          // Add new TikTok script (exactly like the filtering process)
+          const newScript = document.createElement('script');
+          newScript.src = 'https://www.tiktok.com/embed.js';
+          newScript.async = true;
+          
+          newScript.onload = () => {
+            console.log('Initial TikTok script loaded successfully');
+          };
+          
+          newScript.onerror = () => {
+            console.error('Initial TikTok script failed, retrying...');
+            // Retry once more
+            setTimeout(() => {
+              const retryScript = document.createElement('script');
+              retryScript.src = 'https://www.tiktok.com/embed.js';
+              retryScript.async = true;
+              document.body.appendChild(retryScript);
+            }, 1000);
+          };
+          
+          document.body.appendChild(newScript);
         }
-      }, delay);
+      };
+      
+      // Try multiple times with different delays
+      const timer1 = setTimeout(loadTikTokForInitialLoad, 1000);
+      const timer2 = setTimeout(loadTikTokForInitialLoad, 2500);
+      const timer3 = setTimeout(loadTikTokForInitialLoad, 4000);
 
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+      };
     }
   }, [videos, loading]); // Run when videos are loaded and loading is complete
 
