@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 
 export interface VideoData {
   _id: string;
@@ -27,19 +27,8 @@ interface EmbedPlayerProps {
   onError?: (error: string) => void;
 }
 
-export default function EmbedPlayer({ 
-  video, 
-  width = 560, 
-  height = 315, 
-  className = "",
-  onLoad,
-  onError 
-}: EmbedPlayerProps) {
+export default function EmbedPlayer({ video, width = 560, height = 315, className = '', onLoad, onError }: EmbedPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const scriptsLoadedRef = useRef<{ instagram: boolean; tiktok: boolean }>({
-    instagram: false,
-    tiktok: false
-  });
 
   // Extract video ID from YouTube URL
   const getYouTubeVideoId = (url: string): string | null => {
@@ -56,34 +45,24 @@ export default function EmbedPlayer({
   };
 
   // Load Instagram embed script
-  const loadInstagramScript = () => {
-    if (scriptsLoadedRef.current.instagram) return;
-    
-    const script = document.createElement('script');
-    script.src = '//www.instagram.com/embed.js';
-    script.async = true;
-    script.onload = () => {
-      scriptsLoadedRef.current.instagram = true;
-      onLoad?.();
-    };
-    script.onerror = () => onError?.('Failed to load Instagram embed script');
-    document.body.appendChild(script);
-  };
+  const loadInstagramScript = useCallback(() => {
+    if (typeof window !== 'undefined' && !document.querySelector('script[src*="instagram.com/embed.js"]')) {
+      const script = document.createElement('script');
+      script.src = '//www.instagram.com/embed.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
 
   // Load TikTok embed script
-  const loadTikTokScript = () => {
-    if (scriptsLoadedRef.current.tiktok) return;
-    
-    const script = document.createElement('script');
-    script.src = 'https://www.tiktok.com/embed.js';
-    script.async = true;
-    script.onload = () => {
-      scriptsLoadedRef.current.tiktok = true;
-      onLoad?.();
-    };
-    script.onerror = () => onError?.('Failed to load TikTok embed script');
-    document.body.appendChild(script);
-  };
+  const loadTikTokScript = useCallback(() => {
+    if (typeof window !== 'undefined' && !document.querySelector('script[src*="tiktok.com/embed.js"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://www.tiktok.com/embed.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
 
   // Load scripts when component mounts
   useEffect(() => {

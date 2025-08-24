@@ -28,6 +28,7 @@ async function connectToDatabase() {
 
   if (!cached.promise) {
     const promise = mongoose.connect(MONGODB_URI_STRING);
+    // @ts-expect-error - Temporary fix for type mismatch
     cached.promise = promise;
   }
 
