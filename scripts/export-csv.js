@@ -45,7 +45,7 @@ async function exportToCSV(outputFilePath) {
     console.log(`Found ${videos.length} videos to export...`);
 
     // Create CSV content
-    const headers = 'platform,title,user,views,category,focus,mood,sponsoredContent,rating,url,instaEmbed\n';
+    const headers = 'platform,title,user,views,category,focus,mood,sponsoredContent,rating,url,instaEmbed,tiktokEmbed\n';
     
     const csvRows = videos.map(video => {
       return [
@@ -59,7 +59,8 @@ async function exportToCSV(outputFilePath) {
         video.sponsoredContent || '',
         video.rating || 0,
         video.url || '',
-        `"${(video.instaEmbed || '').replace(/"/g, '""')}"` // Escape quotes in embed
+        `"${(video.instaEmbed || '').replace(/"/g, '""')}"`, // Escape quotes in embed
+        `"${(video.tiktokEmbed || '').replace(/"/g, '""')}"` // Escape quotes in embed
       ].join(',');
     });
 
