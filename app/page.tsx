@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 // TypeScript declarations for global objects
 declare global {
@@ -10,7 +10,7 @@ declare global {
         process(): void;
       };
     };
-    TikTok?: any;
+    TikTok?: unknown;
   }
 }
 

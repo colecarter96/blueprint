@@ -85,6 +85,15 @@ export default function EmbedPlayer({
     document.body.appendChild(script);
   };
 
+  // Load scripts when component mounts
+  useEffect(() => {
+    if (video.platform === 'tiktok') {
+      loadTikTokScript();
+    } else if (video.platform === 'instagram') {
+      loadInstagramScript();
+    }
+  }, [video.platform, loadTikTokScript, loadInstagramScript]);
+
   // Render YouTube embed
   const renderYouTube = () => {
     const videoId = getYouTubeVideoId(video.url);
@@ -117,11 +126,6 @@ export default function EmbedPlayer({
       return null;
     }
 
-    // Load TikTok script when component mounts
-    useEffect(() => {
-      loadTikTokScript();
-    }, []);
-
     return (
       <blockquote
         className={`tiktok-embed ${className}`}
@@ -148,11 +152,6 @@ export default function EmbedPlayer({
       onError?.('Instagram embed HTML not provided');
       return null;
     }
-
-    // Load Instagram script when component mounts
-    useEffect(() => {
-      loadInstagramScript();
-    }, []);
 
     return (
       <div
