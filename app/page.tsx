@@ -97,6 +97,26 @@ export default function Home() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [mobileFilterGroup, setMobileFilterGroup] = useState<string | null>(null);
 
+  // Load Instagram embed script
+  const loadInstagramScript = () => {
+    if (typeof window !== 'undefined' && !document.querySelector('script[src*="instagram.com/embed.js"]')) {
+      const script = document.createElement('script');
+      script.src = '//www.instagram.com/embed.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  };
+
+  // Load TikTok embed script
+  const loadTikTokScript = () => {
+    if (typeof window !== 'undefined' && !document.querySelector('script[src*="tiktok.com/embed.js"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://www.tiktok.com/embed.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  };
+
   // Load scripts when component mounts
   useEffect(() => {
     loadInstagramScript();
@@ -212,26 +232,6 @@ export default function Home() {
   // Clear all filters
   const clearFilters = () => {
     setActiveFilter(null);
-  };
-
-  // Load Instagram embed script
-  const loadInstagramScript = () => {
-    if (typeof window !== 'undefined' && !document.querySelector('script[src*="instagram.com/embed.js"]')) {
-      const script = document.createElement('script');
-      script.src = '//www.instagram.com/embed.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  };
-
-  // Load TikTok embed script
-  const loadTikTokScript = () => {
-    if (typeof window !== 'undefined' && !document.querySelector('script[src*="tiktok.com/embed.js"]')) {
-      const script = document.createElement('script');
-      script.src = 'https://www.tiktok.com/embed.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
   };
 
   // Extract video ID from YouTube URL
