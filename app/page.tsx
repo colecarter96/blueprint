@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // TypeScript declarations for global objects
 declare global {
@@ -110,10 +110,115 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<{ type: string; value: string }[]>([]);
+  // Search state (persisted)
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [isMdUp, setIsMdUp] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [mobileFilterGroup, setMobileFilterGroup] = useState<string | null>(null);
   const [orientationFilter, setOrientationFilter] = useState<"all" | "vertical" | "horizontal">("all");
   const [globalLoading, setGlobalLoading] = useState(false);
+
+  // Load persisted search on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("bp:search");
+      if (saved) {
+        setSearchInput(saved);
+        setSearchQuery(saved);
+      }
+    } catch {}
+  }, []);
+
+  // Persist search query
+  useEffect(() => {
+    try {
+      if (searchQuery) {
+        localStorage.setItem("bp:search", searchQuery);
+      } else {
+        localStorage.removeItem("bp:search");
+      }
+    } catch {}
+  }, [searchQuery]);
+
+  // Responsive flag for single SearchBar rendering
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsMdUp(media.matches);
+    update();
+    try {
+      media.addEventListener("change", update);
+      return () => media.removeEventListener("change", update);
+    } catch {
+      // Safari fallback
+      media.addListener(update);
+      return () => media.removeListener(update);
+    }
+  }, []);
+
+  // Refocus input while typing to prevent unintended blur (removed to avoid conflicts)
+  // useEffect(() => {
+  //   if (searchInputRef.current) {
+  //     const isActive = document.activeElement === searchInputRef.current;
+  //     if (!isActive && searchInput.length > 0) {
+  //       searchInputRef.current.focus();
+  //     }
+  //   }
+  // }, [searchInput]);
+
+  // Lightweight synonym map for semantic matching
+  const synonymMap: Record<string, string[]> = {
+    ocean: ["sea", "beach", "waves", "surf", "coast"],
+    surf: ["ocean", "waves", "beach"],
+    cinema: ["cinematic", "movie", "film"],
+    movie: ["cinematic", "film", "cinema"],
+    relaxing: ["calm", "chill"],
+    energetic: ["high energy", "hype", "intense"],
+    tech: ["technology", "gaming", "tech + gaming"],
+    music: ["music + culture", "song", "artist"],
+    finance: ["money", "investing"],
+    sports: ["athletics", "competition"],
+    funny: ["comedy", "humor"],
+  };
+
+  const tokenizeQuery = (q: string): string[] => {
+    const base = q
+      .toLowerCase()
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length >= 2);
+    const expanded: Set<string> = new Set(base);
+    for (const word of base) {
+      const syns = synonymMap[word];
+      if (syns) {
+        syns.forEach((s) => expanded.add(s));
+      }
+    }
+    return Array.from(expanded);
+  };
+
+  // Score a single video against tokens
+  const scoreVideo = (video: Video, tokens: string[]): number => {
+    let score = 0;
+    const title = video.title?.toLowerCase() || "";
+    const user = (video.user?.toLowerCase() || "").replace(/^@/, "");
+    const category = video.category?.toLowerCase() || "";
+    const focus = video.focus?.toLowerCase() || "";
+    const mood = video.mood?.toLowerCase() || "";
+    const platform = video.platform?.toLowerCase() || "";
+
+    for (const t of tokens) {
+      if (title.includes(t)) score += 5;
+      if (user.includes(t)) score += 4;
+      if (category.includes(t)) score += 3;
+      if (focus.includes(t)) score += 3;
+      if (mood.includes(t)) score += 2;
+      if (platform.includes(t)) score += 1;
+    }
+    return score;
+  };
 
   // Animated logo component for loading
   const AnimatedLogo = () => (
@@ -171,6 +276,20 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-2 sm:items-center sm:justify-between">
           {/* Left side - Filter pills and info */}
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center">
+            {/* Search pill */}
+            {searchQuery && (
+              <div className="flex items-center bg-transparent text-white px-2 sm:px-3 py-1 rounded-full text-sm sm:text-base font-bold border-2 border-white">
+                <span className="mr-1 sm:mr-2">{searchQuery}</span>
+                <button
+                  onClick={() => { setSearchQuery(""); setSearchInput(""); }}
+                  className="text-gray-300 hover:text-white transition-colors font-bold text-sm sm:text-base"
+                  aria-label={`Clear search`}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
             {activeFilters.length > 0 && (
               <>
                 {/* Active filters label and pills row */}
@@ -192,7 +311,7 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-                
+
                 {/* Filter count and video count row */}
                 <div className="flex flex-wrap gap-2 items-center">
                   <span className="text-gray-400 text-sm sm:text-base font-medium">
@@ -204,9 +323,9 @@ export default function Home() {
                 </div>
               </>
             )}
-            
+
             {/* Video count when no filters */}
-            {activeFilters.length === 0 && (
+            {activeFilters.length === 0 && !searchQuery && (
               <span className="text-white text-sm sm:text-base font-bold">
                 Showing {filteredVideos.length} of {videos.length} videos
               </span>
@@ -214,9 +333,9 @@ export default function Home() {
           </div>
 
           {/* Right side - Clear button */}
-          {activeFilters.length > 0 && (
+          {(activeFilters.length > 0 || searchQuery) && (
             <button
-              onClick={clearFilters}
+              onClick={() => { setActiveFilters([]); setSearchQuery(""); setSearchInput(""); }}
               className="bg-transparent text-white px-2 sm:px-3 py-1 rounded-full text-sm sm:text-base font-bold border-2 border-white hover:bg-white hover:text-black transition-colors self-start sm:self-auto"
             >
               Clear all
@@ -351,57 +470,57 @@ export default function Home() {
     fetchVideos();
   }, []);
 
-  // Filter videos based on active filter and orientation
-  const filteredVideos = videos.filter(video => {
-    // Apply content filters (OR within groups, AND between groups)
-    let passesContentFilter = true;
-    
-    if (activeFilters.length > 0) {
-      // Group filters by type
-      const filterGroups = activeFilters.reduce((groups, filter) => {
-        if (!groups[filter.type]) {
-          groups[filter.type] = [];
-        }
-        groups[filter.type].push(filter.value);
-        return groups;
-      }, {} as Record<string, string[]>);
-      
-      // Check each group (AND between groups)
-      passesContentFilter = Object.entries(filterGroups).every(([filterType, values]) => {
-        // Within each group, use OR logic
-        switch (filterType) {
-          case 'category':
-            return values.includes(video.category);
-          case 'focus':
-            return values.includes(video.focus);
-          case 'mood':
-            return values.includes(video.mood);
-          case 'sponsoredContent':
-            return values.some(value => {
-              if (value === 'None') {
-                return video.sponsoredContent === null;
-              } else {
-                return video.sponsoredContent === value;
-              }
-            });
-          default:
-            return true;
-        }
-      });
-    }
-    
-    // Apply orientation filter
-    let passesOrientationFilter = true;
-    if (orientationFilter === "vertical") {
-      // Vertical: TikTok and Instagram (not YouTube)
-      passesOrientationFilter = video.platform === "TikTok" || video.platform === "Instagram";
-    } else if (orientationFilter === "horizontal") {
-      // Horizontal: YouTube only
-      passesOrientationFilter = video.platform === "Youtube";
-    }
-    
-    return passesContentFilter && passesOrientationFilter;
-  });
+  // Filter + Search using useMemo for stability
+  const filteredVideos = useMemo(() => {
+    const base = videos.filter((video) => {
+      // Apply content filters (OR within groups, AND between groups)
+      let passesContentFilter = true;
+      if (activeFilters.length > 0) {
+        const filterGroups = activeFilters.reduce((groups: Record<string, string[]>, f) => {
+          if (!groups[f.type]) groups[f.type] = [];
+          groups[f.type].push(f.value);
+          return groups;
+        }, {} as Record<string, string[]>);
+
+        passesContentFilter = Object.entries(filterGroups).every(([filterType, values]) => {
+          switch (filterType) {
+            case "category":
+              return values.includes(video.category);
+            case "focus":
+              return values.includes(video.focus);
+            case "mood":
+              return values.includes(video.mood);
+            case "sponsoredContent":
+              return values.some((v) => (v === "None" ? video.sponsoredContent === null : video.sponsoredContent === v));
+            default:
+              return true;
+          }
+        });
+      }
+
+      // Apply orientation filter
+      let passesOrientationFilter = true;
+      if (orientationFilter === "vertical") {
+        passesOrientationFilter = video.platform === "TikTok" || video.platform === "Instagram";
+      } else if (orientationFilter === "horizontal") {
+        passesOrientationFilter = video.platform === "Youtube";
+      }
+
+      return passesContentFilter && passesOrientationFilter;
+    });
+
+    // Apply search if query length >= 2
+    const q = searchQuery.trim();
+    if (q.length < 2) return base;
+    const tokens = tokenizeQuery(q);
+    const scored = base
+      .map((v) => ({ v, s: scoreVideo(v, tokens) }))
+      .filter(({ s }) => s > 0)
+      .sort((a, b) => b.s - a.s)
+      .map(({ v }) => v);
+
+    return scored;
+  }, [videos, activeFilters, orientationFilter, searchQuery, tokenizeQuery]);
 
   // Process embeds when filtering changes (not on initial load)
   useEffect(() => {
@@ -624,6 +743,61 @@ export default function Home() {
     return video.user.startsWith('@') ? video.user : `@${video.user}`;
   };
 
+  // Search handlers
+  const handleSearchSubmit = () => {
+    const val = (searchInputRef.current?.value || "").trim();
+    setSearchQuery(val);
+    setSearchInput(val);
+  };
+  const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleSearchSubmit();
+  };
+  const handleSearchClear = () => {
+    setSearchInput("");
+    setSearchQuery("");
+    if (searchInputRef.current) {
+      searchInputRef.current.value = "";
+      searchInputRef.current.focus();
+    }
+  };
+
+  // SearchBar (pill-styled)
+  const SearchBar = () => (
+    <div className="w-full max-w-[32rem] px-6">
+      <div className="flex items-center rounded-full border-2 border-white text-white font-bold px-3 py-1 md:py-2">
+        <input
+          type="text"
+          ref={searchInputRef}
+          defaultValue={searchInput}
+          onKeyDown={handleSearchKey}
+          autoComplete="off"
+          placeholder="Search titles, creators, categories..."
+          className="flex-1 bg-transparent outline-none placeholder-gray-400 text-white font-bold"
+        />
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleSearchSubmit}
+          aria-label="Search"
+          className="ml-2 text-white"
+        >
+          🔍
+        </button>
+        {searchQuery && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleSearchClear}
+            aria-label="Clear search"
+            className="ml-2 text-white"
+          >
+            ×
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#2a2a2a] text-white">
@@ -749,7 +923,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#2a2a2a] text-white">
       {/* Header */}
-      <header className="p-6 flex justify-between items-center">
+      <header className="p-6 flex items-center justify-between">
         <div className="flex items-center">
           <img 
             src="/blueprintB.svg" 
@@ -757,7 +931,9 @@ export default function Home() {
             className="h-6 w-auto sm:h-7 md:h-8"
           />
         </div>
-        
+        <div className="flex-1 flex justify-center">
+          {isMdUp && <SearchBar />}
+        </div>
         {/* Orientation Toggle */}
         <div className="flex items-center gap-2">
           <div className="flex bg-[#1a1a1a] rounded-lg p-1">
@@ -794,6 +970,11 @@ export default function Home() {
           </div>
         </div>
       </header>
+      {!isMdUp && (
+        <div className="flex justify-center mb-4">
+          <SearchBar />
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mb-8">
@@ -925,96 +1106,105 @@ export default function Home() {
       {/* Combined Filter Pills and Info */}
       <FilterPillsAndInfo />
 
+      {/* Search Bar */}
+      {/* SearchBar is now in the header on larger screens */}
+
       {/* Videos Grid */}
       <div className="px-6 relative">
         {/* Global Loading Overlay - only covers videos section */}
         {globalLoading && <GlobalLoadingOverlay />}
         
-        <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-          {filteredVideos.map((video) => (
-            <div key={video._id} className="break-inside-avoid bg-[#1a1a1a] rounded-lg overflow-hidden shadow-lg border border-[#333]">
-              {/* Video Embed */}
-              {video.platform === "TikTok" ? (
-                <div className="w-full bg-[#1a1a1a] flex justify-center items-start" style={{ 
-                  minHeight: 'calc(min(323px, 85vw) * 16/9)',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{ 
-                    width: 'min(323px, 85vw)', 
-                    maxWidth: '323px',
-                    aspectRatio: '9/16' 
+        {filteredVideos.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-base font-bold text-gray-400">No Matches</p>
+          </div>
+        ) : (
+          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+            {filteredVideos.map((video) => (
+              <div key={video._id} className="break-inside-avoid bg-[#1a1a1a] rounded-lg overflow-hidden shadow-lg border border-[#333]">
+                {/* Video Embed */}
+                {video.platform === "TikTok" ? (
+                  <div className="w-full bg-[#1a1a1a] flex justify-center items-start" style={{ 
+                    minHeight: 'calc(min(323px, 85vw) * 16/9)',
+                    overflow: 'hidden'
                   }}>
-                    {renderVideo(video)}
+                    <div style={{ 
+                      width: 'min(323px, 85vw)', 
+                      maxWidth: '323px',
+                      aspectRatio: '9/16' 
+                    }}>
+                      {renderVideo(video)}
+                    </div>
                   </div>
+                ) : (
+                <div className="w-full">
+                  {renderVideo(video)}
                 </div>
-              ) : (
-              <div className="w-full">
-                {renderVideo(video)}
-              </div>
-              )}
-              
-              {/* Video Info - Always render for all video types */}
-              <div className="p-4">
-                {/* Platform and User */}
-                <div className="flex items-center justify-between mb-3">
+                )}
+                
+                {/* Video Info - Always render for all video types */}
+                <div className="p-4">
+                  {/* Platform and User */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        video.platform === 'Youtube' ? 'bg-red-600' :
+                        video.platform === 'TikTok' ? 'bg-black' :
+                        'bg-gradient-to-r from-purple-500 to-pink-500'
+                      }`}>
+                        {video.platform}
+                      </span>
+                      <span className="text-white font-medium">{getUserInfo(video)}</span>
+                    </div>
+                    <div className="text-gray-400 text-sm">
+                      {video.views.toLocaleString()} views
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-white font-medium mb-3 line-clamp-2">{video.title}</h3>
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
+                      {video.category}
+                    </span>
+                    <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
+                      {video.focus}
+                    </span>
+                    <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
+                      {video.mood}
+                    </span>
+                    {video.sponsoredContent && (
+                      <span className="bg-yellow-600 text-black px-2 py-1 rounded text-xs font-medium">
+                        {video.sponsoredContent}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Rating */}
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      video.platform === 'Youtube' ? 'bg-red-600' :
-                      video.platform === 'TikTok' ? 'bg-black' :
-                      'bg-gradient-to-r from-purple-500 to-pink-500'
-                    }`}>
-                      {video.platform}
-                    </span>
-                    <span className="text-white font-medium">{getUserInfo(video)}</span>
+                    <div className="flex items-center">
+                      {[...Array(5)].map((_, i) => (
+                        <svg
+                          key={i}
+                          className={`w-4 h-4 ${
+                            i < Math.floor(video.rating / 2) ? 'text-yellow-400' : 'text-gray-600'
+                          }`}
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <span className="text-gray-400 text-sm">{video.rating}/10</span>
                   </div>
-                  <div className="text-gray-400 text-sm">
-                    {video.views.toLocaleString()} views
-                  </div>
-                </div>
-
-                {/* Title */}
-                <h3 className="text-white font-medium mb-3 line-clamp-2">{video.title}</h3>
-
-                {/* Tags */}
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
-                    {video.category}
-                  </span>
-                  <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
-                    {video.focus}
-                  </span>
-                  <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
-                    {video.mood}
-                  </span>
-                  {video.sponsoredContent && (
-                    <span className="bg-yellow-600 text-black px-2 py-1 rounded text-xs font-medium">
-                      {video.sponsoredContent}
-                    </span>
-                  )}
-                </div>
-
-                {/* Rating */}
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center">
-                    {[...Array(5)].map((_, i) => (
-                      <svg
-                        key={i}
-                        className={`w-4 h-4 ${
-                          i < Math.floor(video.rating / 2) ? 'text-yellow-400' : 'text-gray-600'
-                        }`}
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </div>
-                  <span className="text-gray-400 text-sm">{video.rating}/10</span>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
