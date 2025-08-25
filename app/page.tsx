@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
 // TypeScript declarations for global objects
 declare global {
@@ -120,6 +120,7 @@ export default function Home() {
   const [orientationFilter, setOrientationFilter] = useState<"all" | "vertical" | "horizontal">("all");
   const [globalLoading, setGlobalLoading] = useState(false);
   const [mobileVisibleCount, setMobileVisibleCount] = useState(10);
+  const [desktopVisibleCount, setDesktopVisibleCount] = useState(25);
 
   // Load persisted search on mount
   useEffect(() => {
@@ -169,22 +170,25 @@ export default function Home() {
   //   }
   // }, [searchInput]);
 
-  // Lightweight synonym map for semantic matching
-  const synonymMap: Record<string, string[]> = {
-    ocean: ["sea", "beach", "waves", "surf", "coast"],
-    surf: ["ocean", "waves", "beach"],
-    cinema: ["cinematic", "movie", "film"],
-    movie: ["cinematic", "film", "cinema"],
-    relaxing: ["calm", "chill"],
-    energetic: ["high energy", "hype", "intense"],
-    tech: ["technology", "gaming", "tech + gaming"],
-    music: ["music + culture", "song", "artist"],
-    finance: ["money", "investing"],
-    sports: ["athletics", "competition"],
-    funny: ["comedy", "humor"],
-  };
+  // Lightweight synonym map for semantic matching (stable reference)
+  const synonymMap = useMemo<Record<string, string[]>>(
+    () => ({
+      ocean: ["sea", "beach", "waves", "surf", "coast"],
+      surf: ["ocean", "waves", "beach"],
+      cinema: ["cinematic", "movie", "film"],
+      movie: ["cinematic", "film", "cinema"],
+      relaxing: ["calm", "chill"],
+      energetic: ["high energy", "hype", "intense"],
+      tech: ["technology", "gaming", "tech + gaming"],
+      music: ["music + culture", "song", "artist"],
+      finance: ["money", "investing"],
+      sports: ["athletics", "competition"],
+      funny: ["comedy", "humor"],
+    }),
+    []
+  );
 
-  const tokenizeQuery = (q: string): string[] => {
+  const tokenizeQuery = useCallback((q: string): string[] => {
     const base = q
       .toLowerCase()
       .trim()
@@ -198,7 +202,7 @@ export default function Home() {
       }
     }
     return Array.from(expanded);
-  };
+  }, [synonymMap]);
 
   // Score a single video against tokens
   const scoreVideo = (video: Video, tokens: string[]): number => {
@@ -524,28 +528,38 @@ export default function Home() {
   }, [videos, activeFilters, orientationFilter, searchQuery, tokenizeQuery]);
 
   const displayedVideos = useMemo(() => {
-    if (isMdUp) return filteredVideos;
-    const safeCount = Number.isFinite(mobileVisibleCount) && mobileVisibleCount > 0 ? mobileVisibleCount : 10;
+    const count = isMdUp ? desktopVisibleCount : mobileVisibleCount;
+    const fallback = isMdUp ? 25 : 10;
+    const safeCount = Number.isFinite(count) && count > 0 ? count : fallback;
     const sliced = filteredVideos.slice(0, safeCount);
     if (sliced.length === 0 && filteredVideos.length > 0) {
-      return filteredVideos.slice(0, Math.min(10, filteredVideos.length));
+      return filteredVideos.slice(0, Math.min(fallback, filteredVideos.length));
     }
     return sliced;
-  }, [filteredVideos, isMdUp, mobileVisibleCount]);
+  }, [filteredVideos, isMdUp, mobileVisibleCount, desktopVisibleCount]);
 
-  // Ensure mobileVisibleCount never becomes invalid
+  // Reset counts when results or breakpoint change
   useEffect(() => {
-    if (!isMdUp) {
+    setDesktopVisibleCount(25);
+    setMobileVisibleCount(10);
+  }, [filteredVideos]);
+
+  // Ensure counts never become invalid
+  useEffect(() => {
+    if (isMdUp) {
+      if (!Number.isFinite(desktopVisibleCount) || desktopVisibleCount <= 0) {
+        setDesktopVisibleCount(25);
+      }
+    } else {
       if (!Number.isFinite(mobileVisibleCount) || mobileVisibleCount <= 0) {
         setMobileVisibleCount(10);
       }
     }
-  }, [mobileVisibleCount, isMdUp]);
+  }, [mobileVisibleCount, desktopVisibleCount, isMdUp]);
 
-  // Re-process embeds when loading more on mobile so new items initialize
+  // Re-process embeds when loading more so new items initialize (mobile and desktop)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (isMdUp) return;
     const timer = setTimeout(() => {
       try {
         const ig = (window as unknown as { instgrm?: { Embeds?: { process?: () => void } } }).instgrm;
@@ -565,7 +579,7 @@ export default function Home() {
       } catch {}
     }, 300);
     return () => clearTimeout(timer);
-  }, [mobileVisibleCount, isMdUp]);
+  }, [mobileVisibleCount, desktopVisibleCount]);
 
   // Process embeds when filtering changes (not on initial load)
   useEffect(() => {
@@ -1344,10 +1358,21 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            {!isMdUp && displayedVideos.length > 0 && displayedVideos.length < filteredVideos.length && (
+            {displayedVideos.length > 0 && displayedVideos.length < filteredVideos.length && (
               <div className="flex justify-center py-6">
                 <button
-                  onClick={() => setMobileVisibleCount((c) => (Number.isFinite(c) && c > 0 ? c : 10) + 10)}
+                  onClick={() => {
+                    const prevCount = isMdUp
+                      ? (Number.isFinite(desktopVisibleCount) && desktopVisibleCount > 0 ? desktopVisibleCount : 25)
+                      : (Number.isFinite(mobileVisibleCount) && mobileVisibleCount > 0 ? mobileVisibleCount : 10);
+                    const increment = isMdUp ? 25 : 10;
+                    const nextCount = Math.min(prevCount + increment, filteredVideos.length);
+                    if (isMdUp) {
+                      setDesktopVisibleCount(nextCount);
+                    } else {
+                      setMobileVisibleCount(nextCount);
+                    }
+                  }}
                   className="border-2 border-white text-white font-bold rounded-full px-5 py-2 hover:bg-white hover:text-black transition-colors"
                 >
                   Load more
