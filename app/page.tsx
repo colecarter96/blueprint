@@ -1063,42 +1063,136 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Mobile Filters */}
-        <div className="lg:hidden">
-          <div className="space-y-2">
-            {Object.entries(filterOptions).map(([filterType, options]) => (
-              <div key={filterType} className="border border-gray-600 rounded-lg">
-                <button
-                  onClick={() => setMobileFilterGroup(mobileFilterGroup === filterType ? null : filterType)}
-                  className="flex items-center justify-between w-full p-3 text-left"
-                >
-                  <span className="text-sm text-gray-400 font-bold capitalize">
-                    {filterType === 'sponsoredContent' ? 'Sponsored Content' : filterType}
-                  </span>
-                  <span className="text-gray-500">
-                    {mobileFilterGroup === filterType ? '−' : '+'}
-                  </span>
-                </button>
-                
-                {mobileFilterGroup === filterType && (
-                  <div className="pl-4 space-y-2 pb-3">
-                    {options.map((option) => (
+        {/* Mobile/Tablet Filters - 2x2 Grid of Dropdowns */}
+        <div className="lg:hidden px-6">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Categories Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setMobileFilterGroup(mobileFilterGroup === 'category' ? null : 'category')}
+                className="w-full bg-[#1a1a1a] border border-gray-600 rounded-lg p-3 text-left flex items-center justify-between hover:bg-gray-800 transition-colors"
+              >
+                <span className="text-white font-medium">Categories</span>
+                <span className="text-gray-400">
+                  {mobileFilterGroup === 'category' ? '−' : '+'}
+                </span>
+              </button>
+              {mobileFilterGroup === 'category' && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-gray-600 rounded-lg shadow-lg z-10">
+                  <div className="p-2 space-y-1">
+                    {filterOptions.category.map((category) => (
                       <button
-                        key={option}
-                        onClick={() => handleFilterSelect(filterType as keyof typeof filterOptions, option)}
-                        className={`block w-full text-left text-base font-bold transition-colors ${
-                          activeFilters.some(f => f.type === filterType && f.value === option)
-                            ? 'text-gray-500'
-                            : 'text-white hover:text-gray-300'
+                        key={category}
+                        onClick={() => handleFilterSelect('category', category)}
+                        className={`block w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
+                          activeFilters.some(f => f.type === 'category' && f.value === category)
+                            ? 'text-gray-400 bg-gray-800'
+                            : 'text-white hover:text-gray-300 hover:bg-gray-800'
                         }`}
                       >
-                        {option}
+                        {category}
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              )}
+            </div>
+
+            {/* Focus Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setMobileFilterGroup(mobileFilterGroup === 'focus' ? null : 'focus')}
+                className="w-full bg-[#1a1a1a] border border-gray-600 rounded-lg p-3 text-left flex items-center justify-between hover:bg-gray-800 transition-colors"
+              >
+                <span className="text-white font-medium">Focus</span>
+                <span className="text-gray-400">
+                  {mobileFilterGroup === 'focus' ? '−' : '+'}
+                </span>
+              </button>
+              {mobileFilterGroup === 'focus' && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-gray-600 rounded-lg shadow-lg z-10">
+                  <div className="p-2 space-y-1">
+                    {filterOptions.focus.map((focus) => (
+                      <button
+                        key={focus}
+                        onClick={() => handleFilterSelect('focus', focus)}
+                        className={`block w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
+                          activeFilters.some(f => f.type === 'focus' && f.value === focus)
+                            ? 'text-gray-400 bg-gray-800'
+                            : 'text-white hover:text-gray-300 hover:bg-gray-800'
+                        }`}
+                      >
+                        {focus}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Mood Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setMobileFilterGroup(mobileFilterGroup === 'mood' ? null : 'mood')}
+                className="w-full bg-[#1a1a1a] border border-gray-600 rounded-lg p-3 text-left flex items-center justify-between hover:bg-gray-800 transition-colors"
+              >
+                <span className="text-white font-medium">Mood</span>
+                <span className="text-gray-400">
+                  {mobileFilterGroup === 'mood' ? '−' : '+'}
+                </span>
+              </button>
+              {mobileFilterGroup === 'mood' && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-gray-600 rounded-lg shadow-lg z-10">
+                  <div className="p-2 space-y-1">
+                    {filterOptions.mood.map((mood) => (
+                      <button
+                        key={mood}
+                        onClick={() => handleFilterSelect('mood', mood)}
+                        className={`block w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
+                          activeFilters.some(f => f.type === 'mood' && f.value === mood)
+                            ? 'text-gray-400 bg-gray-800'
+                            : 'text-white hover:text-gray-300 hover:bg-gray-800'
+                        }`}
+                      >
+                        {mood}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sponsored Content Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setMobileFilterGroup(mobileFilterGroup === 'sponsoredContent' ? null : 'sponsoredContent')}
+                className="w-full bg-[#1a1a1a] border border-gray-600 rounded-lg p-3 text-left flex items-center justify-between hover:bg-gray-800 transition-colors"
+              >
+                <span className="text-white font-medium">Sponsored Content</span>
+                <span className="text-gray-400">
+                  {mobileFilterGroup === 'sponsoredContent' ? '−' : '+'}
+                </span>
+              </button>
+              {mobileFilterGroup === 'sponsoredContent' && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-gray-600 rounded-lg shadow-lg z-10">
+                  <div className="p-2 space-y-1">
+                    {filterOptions.sponsoredContent.map((content) => (
+                      <button
+                        key={content}
+                        onClick={() => handleFilterSelect('sponsoredContent', content)}
+                        className={`block w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
+                          activeFilters.some(f => f.type === 'sponsoredContent' && f.value === content)
+                            ? 'text-gray-400 bg-gray-800'
+                            : 'text-white hover:text-gray-300 hover:bg-gray-800'
+                        }`}
+                      >
+                        {content}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
