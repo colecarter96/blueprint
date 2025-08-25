@@ -119,6 +119,7 @@ export default function Home() {
   const [mobileFilterGroup, setMobileFilterGroup] = useState<string | null>(null);
   const [orientationFilter, setOrientationFilter] = useState<"all" | "vertical" | "horizontal">("all");
   const [globalLoading, setGlobalLoading] = useState(false);
+  const [mobileVisibleCount, setMobileVisibleCount] = useState(10);
 
   // Load persisted search on mount
   useEffect(() => {
@@ -521,6 +522,50 @@ export default function Home() {
 
     return scored;
   }, [videos, activeFilters, orientationFilter, searchQuery, tokenizeQuery]);
+
+  const displayedVideos = useMemo(() => {
+    if (isMdUp) return filteredVideos;
+    const safeCount = Number.isFinite(mobileVisibleCount) && mobileVisibleCount > 0 ? mobileVisibleCount : 10;
+    const sliced = filteredVideos.slice(0, safeCount);
+    if (sliced.length === 0 && filteredVideos.length > 0) {
+      return filteredVideos.slice(0, Math.min(10, filteredVideos.length));
+    }
+    return sliced;
+  }, [filteredVideos, isMdUp, mobileVisibleCount]);
+
+  // Ensure mobileVisibleCount never becomes invalid
+  useEffect(() => {
+    if (!isMdUp) {
+      if (!Number.isFinite(mobileVisibleCount) || mobileVisibleCount <= 0) {
+        setMobileVisibleCount(10);
+      }
+    }
+  }, [mobileVisibleCount, isMdUp]);
+
+  // Re-process embeds when loading more on mobile so new items initialize
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isMdUp) return;
+    const timer = setTimeout(() => {
+      try {
+        const ig = (window as unknown as { instgrm?: { Embeds?: { process?: () => void } } }).instgrm;
+        if (ig && ig.Embeds && typeof ig.Embeds.process === 'function') {
+          ig.Embeds.process();
+        }
+      } catch {}
+      try {
+        const existingScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
+        if (existingScript) {
+          existingScript.remove();
+        }
+        const newScript = document.createElement('script');
+        newScript.src = 'https://www.tiktok.com/embed.js';
+        newScript.async = true;
+        document.body.appendChild(newScript);
+      } catch {}
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [mobileVisibleCount, isMdUp]);
 
   // Process embeds when filtering changes (not on initial load)
   useEffect(() => {
@@ -1213,91 +1258,103 @@ export default function Home() {
             <p className="text-base font-bold text-gray-400">No Matches</p>
           </div>
         ) : (
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-            {filteredVideos.map((video) => (
-              <div key={video._id} className="break-inside-avoid bg-[#1a1a1a] rounded-lg overflow-hidden shadow-lg border border-[#333]">
-                {/* Video Embed */}
-                {video.platform === "TikTok" ? (
-                  <div className="w-full bg-[#1a1a1a] flex justify-center items-start" style={{ 
-                    minHeight: 'calc(min(323px, 85vw) * 16/9)',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{ 
-                      width: 'min(323px, 85vw)', 
-                      maxWidth: '323px',
-                      aspectRatio: '9/16' 
+          <>
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+              {displayedVideos.map((video) => (
+                <div key={video._id} className="break-inside-avoid bg-[#1a1a1a] rounded-lg overflow-hidden shadow-lg border border-[#333]">
+                  {/* Video Embed */}
+                  {video.platform === "TikTok" ? (
+                    <div className="w-full bg-[#1a1a1a] flex justify-center items-start" style={{ 
+                      minHeight: 'calc(min(323px, 85vw) * 16/9)',
+                      overflow: 'hidden'
                     }}>
-                      {renderVideo(video)}
+                      <div style={{ 
+                        width: 'min(323px, 85vw)', 
+                        maxWidth: '323px',
+                        aspectRatio: '9/16' 
+                      }}>
+                        {renderVideo(video)}
+                      </div>
                     </div>
+                  ) : (
+                  <div className="w-full">
+                    {renderVideo(video)}
                   </div>
-                ) : (
-                <div className="w-full">
-                  {renderVideo(video)}
-                </div>
-                )}
-                
-                {/* Video Info - Always render for all video types */}
-                <div className="p-4">
-                  {/* Platform and User */}
-                  <div className="flex items-center justify-between mb-3">
+                  )}
+                  
+                  {/* Video Info - Always render for all video types */}
+                  <div className="p-4">
+                    {/* Platform and User */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          video.platform === 'Youtube' ? 'bg-red-600' :
+                          video.platform === 'TikTok' ? 'bg-black' :
+                          'bg-gradient-to-r from-purple-500 to-pink-500'
+                        }`}>
+                          {video.platform}
+                        </span>
+                        <span className="text-white font-medium">{getUserInfo(video)}</span>
+                      </div>
+                      <div className="text-gray-400 text-sm">
+                        {video.views.toLocaleString()} views
+                      </div>
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-white font-medium mb-3 line-clamp-2">{video.title}</h3>
+
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
+                        {video.category}
+                      </span>
+                      <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
+                        {video.focus}
+                      </span>
+                      <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
+                        {video.mood}
+                      </span>
+                      {video.sponsoredContent && (
+                        <span className="bg-yellow-600 text-black px-2 py-1 rounded text-xs font-medium">
+                          {video.sponsoredContent}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Rating */}
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        video.platform === 'Youtube' ? 'bg-red-600' :
-                        video.platform === 'TikTok' ? 'bg-black' :
-                        'bg-gradient-to-r from-purple-500 to-pink-500'
-                      }`}>
-                        {video.platform}
-                      </span>
-                      <span className="text-white font-medium">{getUserInfo(video)}</span>
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <svg
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < Math.floor(video.rating / 2) ? 'text-yellow-400' : 'text-gray-600'
+                            }`}
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                        ))}
+                      </div>
+                      <span className="text-gray-400 text-sm">{video.rating}/10</span>
                     </div>
-                    <div className="text-gray-400 text-sm">
-                      {video.views.toLocaleString()} views
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-white font-medium mb-3 line-clamp-2">{video.title}</h3>
-
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
-                      {video.category}
-                    </span>
-                    <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
-                      {video.focus}
-                    </span>
-                    <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
-                      {video.mood}
-                    </span>
-                    {video.sponsoredContent && (
-                      <span className="bg-yellow-600 text-black px-2 py-1 rounded text-xs font-medium">
-                        {video.sponsoredContent}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Rating */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center">
-                      {[...Array(5)].map((_, i) => (
-                        <svg
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < Math.floor(video.rating / 2) ? 'text-yellow-400' : 'text-gray-600'
-                          }`}
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
-                    </div>
-                    <span className="text-gray-400 text-sm">{video.rating}/10</span>
                   </div>
                 </div>
+              ))}
+            </div>
+            {!isMdUp && displayedVideos.length > 0 && displayedVideos.length < filteredVideos.length && (
+              <div className="flex justify-center py-6">
+                <button
+                  onClick={() => setMobileVisibleCount((c) => (Number.isFinite(c) && c > 0 ? c : 10) + 10)}
+                  className="border-2 border-white text-white font-bold rounded-full px-5 py-2 hover:bg-white hover:text-black transition-colors"
+                >
+                  Load more
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
