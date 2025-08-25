@@ -7,7 +7,7 @@ export interface IVideo {
   user: string;
   views: number;
   category: "Cinematic/Storytelling" | "Comedy/Humor" | "Educational" | "Lifestyle" | "Trends/Viral";
-  focus: "Sports" | "Fashion" | "Beauty" | "Health + Wellness" | "Tech + Gaming" | "Travel + Adventure";
+  focus: "Sports" | "Fashion" | "Beauty" | "Health + Wellness" | "Tech + Gaming" | "Travel + Adventure" | "Music + Culture" | "Finance";
   mood: "Calm" | "High Energy" | "Emotional" | "Funny/Lighthearted" | "Dramatic/Suspenseful";
   sponsoredContent: "Goods" | "Services" | "Events" | null;
   rating: number;
@@ -46,7 +46,7 @@ const VideoSchema = new mongoose.Schema<IVideo>(
     focus: {
       type: String,
       required: true,
-      enum: ["Sports", "Fashion", "Beauty", "Health + Wellness", "Tech + Gaming", "Travel + Adventure"],
+      enum: ["Sports", "Fashion", "Beauty", "Health + Wellness", "Tech + Gaming", "Travel + Adventure", "Music + Culture", "Finance"],
     },
     mood: {
       type: String,
