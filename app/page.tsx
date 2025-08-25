@@ -115,16 +115,51 @@ export default function Home() {
   const [orientationFilter, setOrientationFilter] = useState<"all" | "vertical" | "horizontal">("all");
   const [globalLoading, setGlobalLoading] = useState(false);
 
-  // Global loading animation component with dot-dot-dot
+  // Animated logo component for loading
+  const AnimatedLogo = () => (
+    <svg
+      width="120"
+      height="140"
+      viewBox="0 0 86.583084 101.56311"
+      className="animate-pulse"
+    >
+      <g transform="translate(-1755.7751,-901.69998)">
+        <path
+          d="m 1762.2405,996.79764 h 45.8141 c 16.2284,0 27.838,-9.73705 27.838,-25.3413 0,-10.36122 -6.7411,-18.22576 -16.7278,-21.34661 8.1142,-2.87119 12.3586,-9.11289 12.3586,-18.3506 0,-13.73174 -10.7358,-23.59363 -26.8393,-23.59363 h -42.4436 z"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="12.931"
+          strokeDasharray="400"
+          strokeDashoffset="400"
+          style={{
+            animation: 'draw 3s ease-in-out infinite'
+          }}
+        />
+      </g>
+      <style jsx>{`
+        @keyframes draw {
+          0% {
+            stroke-dashoffset: 400;
+            opacity: 0.3;
+          }
+          50% {
+            stroke-dashoffset: 0;
+            opacity: 1;
+          }
+          100% {
+            stroke-dashoffset: -400;
+            opacity: 0.3;
+          }
+        }
+      `}</style>
+    </svg>
+  );
+
+  // Global loading animation component with animated logo
   const GlobalLoadingOverlay = () => (
     <div className="absolute inset-0 bg-[#2a2a2a] z-50 flex items-start justify-center pt-20">
       <div className="text-center">
-        <div className="text-white text-2xl font-medium mb-4">
-          Loading
-          <span className="inline-block animate-pulse">.</span>
-          <span className="inline-block animate-pulse" style={{ animationDelay: '0.3s' }}>.</span>
-          <span className="inline-block animate-pulse" style={{ animationDelay: '0.6s' }}>.</span>
-        </div>
+        <AnimatedLogo />
       </div>
     </div>
   );
@@ -490,7 +525,13 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-[#2a2a2a] text-white">
         <header className="p-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">blueprint</h1>
+          <div className="flex items-center">
+          <img 
+            src="/blueprintB.svg" 
+            alt="Blueprint" 
+            className="h-6 w-auto sm:h-7 md:h-8"
+          />
+        </div>
           <div className="flex items-center gap-2">
             <div className="flex bg-[#1a1a1a] rounded-lg p-1">
               <span className="px-3 py-1 text-sm text-gray-500">All</span>
@@ -580,7 +621,13 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-[#2a2a2a] text-white">
         <header className="p-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">blueprint</h1>
+          <div className="flex items-center">
+          <img 
+            src="/blueprintB.svg" 
+            alt="Blueprint" 
+            className="h-6 w-auto sm:h-7 md:h-8"
+          />
+        </div>
           <div className="flex items-center gap-2">
             <div className="flex bg-[#1a1a1a] rounded-lg p-1">
               <span className="px-3 py-1 text-sm text-gray-500">All</span>
@@ -600,7 +647,13 @@ export default function Home() {
     <div className="min-h-screen bg-[#2a2a2a] text-white">
       {/* Header */}
       <header className="p-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold">blueprint</h1>
+        <div className="flex items-center">
+          <img 
+            src="/blueprintB.svg" 
+            alt="Blueprint" 
+            className="h-6 w-auto sm:h-7 md:h-8"
+          />
+        </div>
         
         {/* Orientation Toggle */}
         <div className="flex items-center gap-2">
