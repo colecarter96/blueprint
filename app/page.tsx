@@ -117,7 +117,7 @@ export default function Home() {
 
   // Global loading animation component with dot-dot-dot
   const GlobalLoadingOverlay = () => (
-    <div className="absolute inset-0 bg-[#2a2a2a] z-50 flex items-center justify-center">
+    <div className="absolute inset-0 bg-[#2a2a2a] z-50 flex items-start justify-center pt-20">
       <div className="text-center">
         <div className="text-white text-2xl font-medium mb-4">
           Loading
@@ -347,10 +347,10 @@ export default function Home() {
       setActiveFilter({ type, value });
     }
     
-    // Hide loading overlay after 2 seconds
+    // Hide loading overlay after 3 seconds
     setTimeout(() => {
       setGlobalLoading(false);
-    }, 2000);
+    }, 3000);
   };
 
   // Clear all filters
@@ -360,10 +360,10 @@ export default function Home() {
     // Clear filter immediately so content can load behind the overlay
     setActiveFilter(null);
     
-    // Hide loading overlay after 2 seconds
+    // Hide loading overlay after 3 seconds
     setTimeout(() => {
       setGlobalLoading(false);
-    }, 2000);
+    }, 3000);
   };
 
   // Handle orientation filter with loading
@@ -373,10 +373,10 @@ export default function Home() {
     // Apply orientation filter immediately so content can load behind the overlay
     setOrientationFilter(orientation);
     
-    // Hide loading overlay after 2 seconds
+    // Hide loading overlay after 3 seconds
     setTimeout(() => {
       setGlobalLoading(false);
-    }, 2000);
+    }, 3000);
   };
 
   // Extract video ID from YouTube URL
@@ -499,8 +499,78 @@ export default function Home() {
             </div>
           </div>
         </header>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-xl">Loading videos...</div>
+
+        {/* Filters */}
+        <div className="mb-8">
+          {/* Desktop Filters */}
+          <div className="hidden lg:block">
+            <div className="grid grid-cols-4 gap-8 justify-items-center">
+              {/* Categories */}
+              <div className="text-center">
+                <h3 className="text-base text-gray-400 mb-2 font-bold text-left">Categories</h3>
+                <div className="space-y-2">
+                  {filterOptions.category.map((category) => (
+                    <button
+                      key={category}
+                      className="block w-full text-left text-3xl font-bold text-gray-500"
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Focus */}
+              <div className="text-center">
+                <h3 className="text-base text-gray-400 mb-2 font-bold text-left">Focus</h3>
+                <div className="space-y-2">
+                  {filterOptions.focus.map((focus) => (
+                    <button
+                      key={focus}
+                      className="block w-full text-left text-3xl font-bold text-gray-500"
+                    >
+                      {focus}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mood */}
+              <div className="text-center">
+                <h3 className="text-base text-gray-400 mb-2 font-bold text-left">Mood</h3>
+                <div className="space-y-2">
+                  {filterOptions.mood.map((mood) => (
+                    <button
+                      key={mood}
+                      className="block w-full text-left text-3xl font-bold text-gray-500"
+                    >
+                      {mood}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sponsored Content */}
+              <div className="text-center">
+                <h3 className="text-base text-gray-400 mb-2 font-bold text-left">Sponsored Content</h3>
+                <div className="space-y-2">
+                  {filterOptions.sponsoredContent.map((content) => (
+                    <button
+                      key={content}
+                      className="block w-full text-left text-3xl font-bold text-gray-500"
+                    >
+                      {content}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Videos Section with Loading Overlay */}
+        <div className="px-6 relative">
+          <GlobalLoadingOverlay />
         </div>
       </div>
     );
@@ -728,7 +798,10 @@ export default function Home() {
             <div key={video._id} className="break-inside-avoid bg-[#1a1a1a] rounded-lg overflow-hidden shadow-lg border border-[#333]">
               {/* Video Embed */}
               {video.platform === "TikTok" ? (
-                <div className="w-full bg-[#1a1a1a] flex justify-center items-start h-[743px] sm:h-[600px] md:h-[743px]">
+                <div className="w-full bg-[#1a1a1a] flex justify-center items-start" style={{ 
+                  minHeight: 'calc(min(323px, 85vw) * 16/9)',
+                  overflow: 'hidden'
+                }}>
                   <div style={{ 
                     width: 'min(323px, 85vw)', 
                     maxWidth: '323px',
