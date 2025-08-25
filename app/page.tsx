@@ -22,7 +22,7 @@ interface Video {
   user: string;
   views: number;
   category: "Cinematic/Storytelling" | "Comedy/Humor" | "Educational" | "Lifestyle" | "Trends/Viral";
-  focus: "Sports" | "Fashion" | "Beauty" | "Health + Wellness" | "Tech + Gaming" | "Travel + Adventure" | "Music + Culture";
+  focus: "Sports" | "Fashion" | "Beauty" | "Health + Wellness" | "Tech + Gaming" | "Travel + Adventure" | "Music + Culture" | "Finance";
   mood: "Calm" | "High Energy" | "Emotional" | "Funny/Lighthearted" | "Dramatic/Suspenseful";
   sponsoredContent: "Goods" | "Services" | "Events" | null;
   rating: number;
@@ -34,7 +34,7 @@ interface Video {
 // Filter options
 const filterOptions = {
   category: ["Cinematic/Storytelling", "Comedy/Humor", "Educational", "Lifestyle", "Trends/Viral"],
-  focus: ["Sports", "Fashion", "Beauty", "Health + Wellness", "Tech + Gaming", "Travel + Adventure", "Music + Culture"],
+  focus: ["Sports", "Fashion", "Beauty", "Health + Wellness", "Tech + Gaming", "Travel + Adventure", "Music + Culture", "Finance"],
   mood: ["Calm", "High Energy", "Emotional", "Funny/Lighthearted", "Dramatic/Suspenseful"],
   sponsoredContent: ["Goods", "Services", "Events", "None"]
 };
@@ -109,7 +109,7 @@ export default function Home() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<{ type: string; value: string } | null>(null);
+  const [activeFilters, setActiveFilters] = useState<{ type: string; value: string }[]>([]);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [mobileFilterGroup, setMobileFilterGroup] = useState<string | null>(null);
   const [orientationFilter, setOrientationFilter] = useState<"all" | "vertical" | "horizontal">("all");
@@ -163,6 +163,69 @@ export default function Home() {
       </div>
     </div>
   );
+
+  // Combined filter pills and info component
+  const FilterPillsAndInfo = () => {
+    return (
+      <div className="mb-6 px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-2 sm:items-center sm:justify-between">
+          {/* Left side - Filter pills and info */}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center">
+            {activeFilters.length > 0 && (
+              <>
+                {/* Active filters label and pills row */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-gray-400 text-sm sm:text-base font-medium">Active filters:</span>
+                  {activeFilters.map((filter, index) => (
+                    <div
+                      key={`${filter.type}-${filter.value}-${index}`}
+                      className="flex items-center bg-transparent text-white px-2 sm:px-3 py-1 rounded-full text-sm sm:text-base font-bold border-2 border-white"
+                    >
+                      <span className="mr-1 sm:mr-2">{filter.value}</span>
+                      <button
+                        onClick={() => removeFilter(filter.type, filter.value)}
+                        className="text-gray-300 hover:text-white transition-colors font-bold text-sm sm:text-base"
+                        aria-label={`Remove ${filter.value} filter`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Filter count and video count row */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-gray-400 text-sm sm:text-base font-medium">
+                    {activeFilters.length} filter{activeFilters.length > 1 ? 's' : ''} applied
+                  </span>
+                  <span className="text-white text-sm sm:text-base font-bold">
+                    Showing {filteredVideos.length} of {videos.length} videos
+                  </span>
+                </div>
+              </>
+            )}
+            
+            {/* Video count when no filters */}
+            {activeFilters.length === 0 && (
+              <span className="text-white text-sm sm:text-base font-bold">
+                Showing {filteredVideos.length} of {videos.length} videos
+              </span>
+            )}
+          </div>
+
+          {/* Right side - Clear button */}
+          {activeFilters.length > 0 && (
+            <button
+              onClick={clearFilters}
+              className="bg-transparent text-white px-2 sm:px-3 py-1 rounded-full text-sm sm:text-base font-bold border-2 border-white hover:bg-white hover:text-black transition-colors self-start sm:self-auto"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // Add fallback state for failed embeds
   const [embedFailures, setEmbedFailures] = useState<Set<string>>(new Set());
@@ -290,29 +353,41 @@ export default function Home() {
 
   // Filter videos based on active filter and orientation
   const filteredVideos = videos.filter(video => {
-    // Apply category/focus/mood/sponsored filter first
+    // Apply content filters (OR within groups, AND between groups)
     let passesContentFilter = true;
-    if (activeFilter) {
-      switch (activeFilter.type) {
-        case 'category':
-          passesContentFilter = video.category === activeFilter.value;
-          break;
-        case 'focus':
-          passesContentFilter = video.focus === activeFilter.value;
-          break;
-        case 'mood':
-          passesContentFilter = video.mood === activeFilter.value;
-          break;
-        case 'sponsoredContent':
-          if (activeFilter.value === 'None') {
-            passesContentFilter = video.sponsoredContent === null;
-          } else {
-            passesContentFilter = video.sponsoredContent === activeFilter.value;
-          }
-          break;
-        default:
-          passesContentFilter = true;
-      }
+    
+    if (activeFilters.length > 0) {
+      // Group filters by type
+      const filterGroups = activeFilters.reduce((groups, filter) => {
+        if (!groups[filter.type]) {
+          groups[filter.type] = [];
+        }
+        groups[filter.type].push(filter.value);
+        return groups;
+      }, {} as Record<string, string[]>);
+      
+      // Check each group (AND between groups)
+      passesContentFilter = Object.entries(filterGroups).every(([filterType, values]) => {
+        // Within each group, use OR logic
+        switch (filterType) {
+          case 'category':
+            return values.includes(video.category);
+          case 'focus':
+            return values.includes(video.focus);
+          case 'mood':
+            return values.includes(video.mood);
+          case 'sponsoredContent':
+            return values.some(value => {
+              if (value === 'None') {
+                return video.sponsoredContent === null;
+              } else {
+                return video.sponsoredContent === value;
+              }
+            });
+          default:
+            return true;
+        }
+      });
     }
     
     // Apply orientation filter
@@ -374,13 +449,27 @@ export default function Home() {
     setGlobalLoading(true);
     
     // Apply filter immediately so content can load behind the overlay
-    if (activeFilter?.type === type && activeFilter?.value === value) {
-      // If same filter is clicked again, remove it
-      setActiveFilter(null);
-    } else {
-      // Set new filter
-      setActiveFilter({ type, value });
-    }
+    setActiveFilters(prevFilters => {
+      const existingFilterIndex = prevFilters.findIndex(f => f.type === type && f.value === value);
+      
+      if (existingFilterIndex !== -1) {
+        // If same filter is clicked again, remove it
+        return prevFilters.filter((_, index) => index !== existingFilterIndex);
+      } else {
+        // Check if there's already a filter of this type
+        const existingTypeIndex = prevFilters.findIndex(f => f.type === type);
+        
+        if (existingTypeIndex !== -1) {
+          // Replace existing filter of this type (OR within same group)
+          const newFilters = [...prevFilters];
+          newFilters[existingTypeIndex] = { type, value };
+          return newFilters;
+        } else {
+          // Add new filter (AND between different groups)
+          return [...prevFilters, { type, value }];
+        }
+      }
+    });
     
     // Hide loading overlay after 3 seconds
     setTimeout(() => {
@@ -392,8 +481,22 @@ export default function Home() {
   const clearFilters = () => {
     setGlobalLoading(true);
     
-    // Clear filter immediately so content can load behind the overlay
-    setActiveFilter(null);
+    // Clear all filters immediately so content can load behind the overlay
+    setActiveFilters([]);
+    
+    // Hide loading overlay after 3 seconds
+    setTimeout(() => {
+      setGlobalLoading(false);
+    }, 3000);
+  };
+
+  // Remove specific filter
+  const removeFilter = (type: string, value: string) => {
+    setGlobalLoading(true);
+    
+    setActiveFilters(prevFilters => 
+      prevFilters.filter(f => !(f.type === type && f.value === value))
+    );
     
     // Hide loading overlay after 3 seconds
     setTimeout(() => {
@@ -706,7 +809,7 @@ export default function Home() {
                     key={category}
                     onClick={() => handleFilterSelect('category', category)}
                     className={`block w-full text-left text-3xl font-bold transition-colors ${
-                      activeFilter?.type === 'category' && activeFilter?.value === category
+                      activeFilters.some(f => f.type === 'category' && f.value === category)
                         ? 'text-gray-400'
                         : 'text-white hover:text-gray-300'
                     }`}
@@ -726,7 +829,7 @@ export default function Home() {
                     key={focus}
                     onClick={() => handleFilterSelect('focus', focus)}
                     className={`block w-full text-left text-3xl font-bold transition-colors ${
-                      activeFilter?.type === 'focus' && activeFilter?.value === focus
+                      activeFilters.some(f => f.type === 'focus' && f.value === focus)
                         ? 'text-gray-500'
                         : 'text-white hover:text-gray-300'
                     }`}
@@ -746,7 +849,7 @@ export default function Home() {
                     key={mood}
                     onClick={() => handleFilterSelect('mood', mood)}
                     className={`block w-full text-left text-3xl font-bold transition-colors ${
-                      activeFilter?.type === 'mood' && activeFilter?.value === mood
+                      activeFilters.some(f => f.type === 'mood' && f.value === mood)
                         ? 'text-gray-500'
                         : 'text-white hover:text-gray-300'
                     }`}
@@ -766,7 +869,7 @@ export default function Home() {
                     key={content}
                     onClick={() => handleFilterSelect('sponsoredContent', content)}
                     className={`block w-full text-left text-3xl font-bold transition-colors ${
-                      activeFilter?.type === 'sponsoredContent' && activeFilter?.value === content
+                      activeFilters.some(f => f.type === 'sponsoredContent' && f.value === content)
                         ? 'text-gray-500'
                         : 'text-white hover:text-gray-300'
                     }`}
@@ -803,7 +906,7 @@ export default function Home() {
                         key={option}
                         onClick={() => handleFilterSelect(filterType as keyof typeof filterOptions, option)}
                         className={`block w-full text-left text-base font-bold transition-colors ${
-                          activeFilter?.type === filterType && activeFilter?.value === option
+                          activeFilters.some(f => f.type === filterType && f.value === option)
                             ? 'text-gray-500'
                             : 'text-white hover:text-gray-300'
                         }`}
@@ -819,27 +922,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Filter Info - Below Filters, Above Videos, Far Right */}
-      <div className="flex justify-end mb-6">
-        {activeFilter && (
-          <div className="text-right">
-            <div className="text-white text-sm mb-2">
-              Showing {filteredVideos.length} of {videos.length} videos
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              <span className="text-gray-400 text-sm">
-                Filtered by {activeFilter.type}: {activeFilter.value}
-              </span>
-              <button
-                onClick={clearFilters}
-                className="text-blue-400 hover:text-blue-300 text-sm underline"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Combined Filter Pills and Info */}
+      <FilterPillsAndInfo />
 
       {/* Videos Grid */}
       <div className="px-6 relative">
