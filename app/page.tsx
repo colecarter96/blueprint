@@ -22,7 +22,7 @@ interface Video {
   user: string;
   views: number;
   category: "Cinematic/Storytelling" | "Comedy/Humor" | "Educational" | "Lifestyle" | "Trends/Viral";
-  focus: "Sports" | "Fashion" | "Beauty" | "Health + Wellness" | "Tech + Gaming" | "Travel + Adventure";
+  focus: "Sports" | "Fashion" | "Beauty" | "Health + Wellness" | "Tech + Gaming" | "Travel + Adventure" | "Music + Culture";
   mood: "Calm" | "High Energy" | "Emotional" | "Funny/Lighthearted" | "Dramatic/Suspenseful";
   sponsoredContent: "Goods" | "Services" | "Events" | null;
   rating: number;
@@ -34,7 +34,7 @@ interface Video {
 // Filter options
 const filterOptions = {
   category: ["Cinematic/Storytelling", "Comedy/Humor", "Educational", "Lifestyle", "Trends/Viral"],
-  focus: ["Sports", "Fashion", "Beauty", "Health + Wellness", "Tech + Gaming", "Travel + Adventure"],
+  focus: ["Sports", "Fashion", "Beauty", "Health + Wellness", "Tech + Gaming", "Travel + Adventure", "Music + Culture"],
   mood: ["Calm", "High Energy", "Emotional", "Funny/Lighthearted", "Dramatic/Suspenseful"],
   sponsoredContent: ["Goods", "Services", "Events", "None"]
 };
@@ -564,7 +564,7 @@ export default function Home() {
               {/* Focus */}
               <div className="text-center">
                 <h3 className="text-base text-gray-400 mb-2 font-bold text-left">Focus</h3>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {filterOptions.focus.map((focus) => (
                     <button
                       key={focus}
@@ -720,7 +720,7 @@ export default function Home() {
             {/* Focus */}
             <div className="text-center">
               <h3 className="text-base text-gray-400 mb-2 font-bold text-left">Focus</h3>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {filterOptions.focus.map((focus) => (
                   <button
                     key={focus}
@@ -864,9 +864,9 @@ export default function Home() {
                   </div>
                 </div>
               ) : (
-                <div className="w-full">
-                  {renderVideo(video)}
-                </div>
+              <div className="w-full">
+                {renderVideo(video)}
+              </div>
               )}
               
               {/* Video Info - Always render for all video types */}
