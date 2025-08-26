@@ -10,6 +10,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Blueprint",
   description: "Blueprint website",
+  icons: {
+    icon: [{ url: "/blueprintB.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/blueprintB.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
