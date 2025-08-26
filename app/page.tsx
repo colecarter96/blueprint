@@ -77,14 +77,14 @@ function TikTokVideo({ video }: { video: Video }) {
   }
 
   return (
-    <div className="w-full" style={{ 
+    <div className="w-full relative" style={{ 
       aspectRatio: '299/659', 
       maxHeight: '1151px',
       height: 'clamp(620px, 70.8vh, 974px)'
     }}>
-      {/* Loading State */}
+      {/* Loading overlay on top, keep embed visible underneath */}
       {isLoading && (
-        <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a] text-white">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#1a1a1a] text-white">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-3"></div>
             <p className="text-lg font-medium">Loading TikTok...</p>
@@ -92,10 +92,10 @@ function TikTokVideo({ video }: { video: Video }) {
           </div>
         </div>
       )}
-      
+
       {/* TikTok Embed - Use full embed HTML */}
       <div
-        className={`w-full h-full ${isLoading ? 'hidden' : ''}`}
+        className="w-full h-full"
         style={{ backgroundColor: '#1a1a1a' }}
         dangerouslySetInnerHTML={{
           __html: video.tiktokEmbed
@@ -340,7 +340,7 @@ export default function Home() {
           {/* Right side - Clear button */}
           {(activeFilters.length > 0 || searchQuery) && (
             <button
-              onClick={() => { setActiveFilters([]); setSearchQuery(""); setSearchInput(""); }}
+              onClick={() => { setActiveFilters([]); setSearchQuery(""); setSearchInput(""); ensureEmbedsProcessed(400); }}
               className="bg-transparent text-white px-2 sm:px-3 py-1 rounded-full text-sm sm:text-base font-bold border-2 border-white hover:bg-white hover:text-black transition-colors self-start sm:self-auto"
             >
               Clear all
@@ -354,6 +354,40 @@ export default function Home() {
   // Add fallback state for failed embeds
   const [embedFailures, setEmbedFailures] = useState<Set<string>>(new Set());
 
+  // Centralized, debounced processing of Instagram/TikTok embeds
+  const embedsProcessTimer = useRef<number | null>(null);
+  const ensureEmbedsProcessed = useCallback((delayMs: number = 300) => {
+    if (typeof window === 'undefined') return;
+    if (embedsProcessTimer.current) {
+      clearTimeout(embedsProcessTimer.current);
+    }
+    embedsProcessTimer.current = window.setTimeout(() => {
+      // Wait for DOM to commit layout, then process
+      requestAnimationFrame(() => {
+        try {
+          // Ensure Instagram script exists, then process embeds
+          if (!document.querySelector('script[src*="instagram.com/embed.js"]')) {
+            const instagramScript = document.createElement('script');
+            instagramScript.src = '//www.instagram.com/embed.js';
+            instagramScript.async = true;
+            document.body.appendChild(instagramScript);
+          }
+          if (window.instgrm && window.instgrm.Embeds && typeof window.instgrm.Embeds.process === 'function') {
+            window.instgrm.Embeds.process();
+          }
+        } catch {}
+
+        try {
+          // Append TikTok script to re-hydrate without removing existing
+          const tiktokScript = document.createElement('script');
+          tiktokScript.src = 'https://www.tiktok.com/embed.js';
+          tiktokScript.async = true;
+          document.body.appendChild(tiktokScript);
+        } catch {}
+      });
+    }, delayMs);
+  }, []);
+
   // Function to mark embed as failed
   const markEmbedFailed = (videoId: string) => {
     setEmbedFailures(prev => new Set(prev).add(videoId));
@@ -366,101 +400,26 @@ export default function Home() {
       newSet.delete(videoId);
       return newSet;
     });
-    // Force reload of scripts
-    if (typeof window !== 'undefined') {
-      setTimeout(() => {
-        if (window.instgrm) {
-          window.instgrm.Embeds.process();
-        }
-        // Reload TikTok script
-        const existingScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
-        if (existingScript) {
-          existingScript.remove();
-        }
-        // Create new TikTok script
-        const newScript = document.createElement('script');
-        newScript.src = 'https://www.tiktok.com/embed.js';
-        newScript.async = true;
-        document.body.appendChild(newScript);
-      }, 1000);
-    }
+    ensureEmbedsProcessed(1000);
   };
 
-  // Simplified script loading
-  const loadEmbedScripts = () => {
-    if (typeof window === 'undefined') return;
-
-    // Load Instagram script
-    if (!document.querySelector('script[src*="instagram.com/embed.js"]')) {
-      const instagramScript = document.createElement('script');
-      instagramScript.src = '//www.instagram.com/embed.js';
-      instagramScript.async = true;
-      document.body.appendChild(instagramScript);
-    }
-
-    // Load TikTok script
-    if (!document.querySelector('script[src*="tiktok.com/embed.js"]')) {
-      const tiktokScript = document.createElement('script');
-      tiktokScript.src = 'https://www.tiktok.com/embed.js';
-      tiktokScript.async = true;
-      document.body.appendChild(tiktokScript);
-    }
-  };
+  // Initial embed processing on mount
 
   // Load scripts when component mounts
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadEmbedScripts();
+      ensureEmbedsProcessed(0);
     }, 500);
-
     return () => clearTimeout(timer);
   }, []);
 
   // Additional script loading after videos are loaded (for initial page load)
   useEffect(() => {
     if (videos.length > 0 && !loading) {
-      // Multiple attempts to ensure TikTok loads on initial page load
-      const loadTikTokForInitialLoad = () => {
-        if (typeof window !== 'undefined') {
-          // Process Instagram embeds
-          if (window.instgrm) {
-            window.instgrm.Embeds.process();
-          }
-          
-          // For TikTok, completely remove and reload script (same as filtering)
-          const existingScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
-          if (existingScript) {
-            existingScript.remove();
-          }
-          
-          // Add new TikTok script (exactly like the filtering process)
-          const newScript = document.createElement('script');
-          newScript.src = 'https://www.tiktok.com/embed.js';
-          newScript.async = true;
-          
-          newScript.onload = () => {
-            console.log('Initial TikTok script loaded successfully');
-          };
-          
-          newScript.onerror = () => {
-            console.error('Initial TikTok script failed, retrying...');
-            // Retry once more
-            setTimeout(() => {
-              const retryScript = document.createElement('script');
-              retryScript.src = 'https://www.tiktok.com/embed.js';
-              retryScript.async = true;
-              document.body.appendChild(retryScript);
-            }, 1000);
-          };
-          
-          document.body.appendChild(newScript);
-        }
-      };
-      
-      // Try multiple times with different delays
-      const timer1 = setTimeout(loadTikTokForInitialLoad, 1000);
-      const timer2 = setTimeout(loadTikTokForInitialLoad, 2500);
-      const timer3 = setTimeout(loadTikTokForInitialLoad, 4000);
+      // Multiple attempts to ensure embeds process on initial load
+      const timer1 = setTimeout(() => ensureEmbedsProcessed(0), 1000);
+      const timer2 = setTimeout(() => ensureEmbedsProcessed(0), 2500);
+      const timer3 = setTimeout(() => ensureEmbedsProcessed(0), 4000);
 
       return () => {
         clearTimeout(timer1);
@@ -538,6 +497,15 @@ export default function Home() {
     return sliced;
   }, [filteredVideos, isMdUp, mobileVisibleCount, desktopVisibleCount]);
 
+  // Signature of currently displayed video IDs; changes when DOM should reflect a new set
+  const displayedIdsSignature = useMemo(() => displayedVideos.map(v => v._id).join(','), [displayedVideos]);
+
+  // Process embeds precisely when the displayed set changes (after render)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    ensureEmbedsProcessed(150);
+  }, [displayedIdsSignature, ensureEmbedsProcessed]);
+
   // Reset counts when results or breakpoint change
   useEffect(() => {
     setDesktopVisibleCount(25);
@@ -559,50 +527,13 @@ export default function Home() {
 
   // Re-process embeds when loading more so new items initialize (mobile and desktop)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const timer = setTimeout(() => {
-      try {
-        const ig = (window as unknown as { instgrm?: { Embeds?: { process?: () => void } } }).instgrm;
-        if (ig && ig.Embeds && typeof ig.Embeds.process === 'function') {
-          ig.Embeds.process();
-        }
-      } catch {}
-      try {
-        const existingScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
-        if (existingScript) {
-          existingScript.remove();
-        }
-        const newScript = document.createElement('script');
-        newScript.src = 'https://www.tiktok.com/embed.js';
-        newScript.async = true;
-        document.body.appendChild(newScript);
-      } catch {}
-    }, 300);
-    return () => clearTimeout(timer);
+    ensureEmbedsProcessed(300);
   }, [mobileVisibleCount, desktopVisibleCount]);
 
   // Process embeds when filtering changes (not on initial load)
   useEffect(() => {
     if (videos.length > 0 && typeof window !== 'undefined' && !loading) {
-      const timer = setTimeout(() => {
-        // Re-process Instagram embeds
-        if (window.instgrm) {
-          window.instgrm.Embeds.process();
-        }
-        
-        // For TikTok, reload the script to process filtered embeds
-        const existingScript = document.querySelector('script[src*="tiktok.com/embed.js"]');
-        if (existingScript) {
-          existingScript.remove();
-        }
-        
-        const newScript = document.createElement('script');
-        newScript.src = 'https://www.tiktok.com/embed.js';
-        newScript.async = true;
-        document.body.appendChild(newScript);
-      }, 800); // Slightly faster for filter changes
-
-      return () => clearTimeout(timer);
+      ensureEmbedsProcessed(800);
     }
   }, [filteredVideos]); // Only run when filtered videos change, not on initial load
 
@@ -648,6 +579,7 @@ export default function Home() {
         }
       }
     });
+    // Processing will be triggered post-state update in an effect below
     
     // Hide loading overlay after 3 seconds
     setTimeout(() => {
@@ -661,6 +593,7 @@ export default function Home() {
     
     // Clear all filters immediately so content can load behind the overlay
     setActiveFilters([]);
+    // Processing will be triggered post-state update in an effect below
     
     // Hide loading overlay after 3 seconds
     setTimeout(() => {
@@ -675,12 +608,20 @@ export default function Home() {
     setActiveFilters(prevFilters => 
       prevFilters.filter(f => !(f.type === type && f.value === value))
     );
+    // Processing will be triggered post-state update in an effect below
     
     // Hide loading overlay after 3 seconds
     setTimeout(() => {
       setGlobalLoading(false);
     }, 3000);
   };
+
+  // Ensure embed processing occurs after activeFilters state changes have re-rendered
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // Only trigger when user has interacted (filters array changes)
+    ensureEmbedsProcessed(200);
+  }, [activeFilters, ensureEmbedsProcessed]);
 
   // Handle orientation filter with loading
   const handleOrientationFilter = (orientation: "all" | "vertical" | "horizontal") => {
