@@ -176,6 +176,9 @@ export default function Home() {
   const [mobileFilterGroup, setMobileFilterGroup] = useState<string | null>(null);
   const [orientationFilter, setOrientationFilter] = useState<"all" | "vertical" | "horizontal">("all");
   const [globalLoading, setGlobalLoading] = useState(false);
+  // Mobile-only pagination
+  const MOBILE_BATCH = 10;
+  const [mobileVisibleCount, setMobileVisibleCount] = useState<number>(MOBILE_BATCH);
 
   // Load persisted search on mount
   useEffect(() => {
@@ -198,6 +201,15 @@ export default function Home() {
       }
     } catch {}
   }, [searchQuery]);
+
+  // Reset mobile visible count when the filtered set changes
+  useEffect(() => {
+    setMobileVisibleCount(MOBILE_BATCH);
+  }, [/* reset on */ videos.length, activeFilters, orientationFilter, searchQuery]);
+
+  const loadMoreMobile = () => {
+    setMobileVisibleCount((c) => c + MOBILE_BATCH);
+  };
 
   // Responsive flag for single SearchBar rendering
   useEffect(() => {
@@ -531,7 +543,7 @@ export default function Home() {
   const filteredVideos = useMemo(() => {
     const base = videos.filter((video) => {
       // Apply content filters (OR within groups, AND between groups)
-      let passesContentFilter = true;
+    let passesContentFilter = true;
       if (activeFilters.length > 0) {
         const filterGroups = activeFilters.reduce((groups: Record<string, string[]>, f) => {
           if (!groups[f.type]) groups[f.type] = [];
@@ -549,22 +561,22 @@ export default function Home() {
               return values.includes(video.mood);
             case "sponsoredContent":
               return values.some((v) => (v === "None" ? video.sponsoredContent === null : video.sponsoredContent === v));
-            default:
+        default:
               return true;
-          }
+      }
         });
-      }
-
-      // Apply orientation filter
-      let passesOrientationFilter = true;
-      if (orientationFilter === "vertical") {
-        passesOrientationFilter = video.platform === "TikTok" || video.platform === "Instagram";
-      } else if (orientationFilter === "horizontal") {
-        passesOrientationFilter = video.platform === "Youtube";
-      }
-
-      return passesContentFilter && passesOrientationFilter;
-    });
+    }
+    
+    // Apply orientation filter
+    let passesOrientationFilter = true;
+    if (orientationFilter === "vertical") {
+      passesOrientationFilter = video.platform === "TikTok" || video.platform === "Instagram";
+    } else if (orientationFilter === "horizontal") {
+      passesOrientationFilter = video.platform === "Youtube";
+    }
+    
+    return passesContentFilter && passesOrientationFilter;
+  });
 
     // Apply search if query length >= 2
     const q = searchQuery.trim();
@@ -578,6 +590,12 @@ export default function Home() {
 
     return scored;
   }, [videos, activeFilters, orientationFilter, searchQuery, tokenizeQuery]);
+
+  // Displayed videos: paginate on mobile only
+  const displayedVideos = useMemo(() => {
+    if (isMdUp) return filteredVideos;
+    return filteredVideos.slice(0, mobileVisibleCount);
+  }, [filteredVideos, isMdUp, mobileVisibleCount]);
 
   // Process embeds when filtering changes (not on initial load)
   useEffect(() => {
@@ -629,9 +647,9 @@ export default function Home() {
       const existingFilterIndex = prevFilters.findIndex(f => f.type === type && f.value === value);
       
       if (existingFilterIndex !== -1) {
-        // If same filter is clicked again, remove it
+      // If same filter is clicked again, remove it
         return prevFilters.filter((_, index) => index !== existingFilterIndex);
-      } else {
+    } else {
         // Check if there's already a filter of this type
         const existingTypeIndex = prevFilters.findIndex(f => f.type === type);
         
@@ -1118,15 +1136,15 @@ export default function Home() {
           <div className="grid grid-cols-2 gap-4">
             {/* Categories Dropdown */}
             <div className="relative">
-              <button
+                <button
                 onClick={() => setMobileFilterGroup(mobileFilterGroup === 'category' ? null : 'category')}
                 className="w-full bg-[#1a1a1a] border border-gray-600 rounded-lg p-3 text-left flex items-center justify-between hover:bg-gray-800 transition-colors"
               >
                 <span className="text-white font-medium">Categories</span>
                 <span className="text-gray-400">
                   {mobileFilterGroup === 'category' ? '−' : '+'}
-                </span>
-              </button>
+                  </span>
+                </button>
               {mobileFilterGroup === 'category' && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-gray-600 rounded-lg shadow-lg z-10">
                   <div className="p-2 space-y-1">
@@ -1144,9 +1162,9 @@ export default function Home() {
                       </button>
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
 
             {/* Focus Dropdown */}
             <div className="relative">
@@ -1174,11 +1192,11 @@ export default function Home() {
                       >
                         {focus}
                       </button>
-                    ))}
-                  </div>
-                </div>
+            ))}
+          </div>
+        </div>
               )}
-            </div>
+      </div>
 
             {/* Mood Dropdown */}
             <div className="relative">
@@ -1207,7 +1225,7 @@ export default function Home() {
                         {mood}
                       </button>
                     ))}
-                  </div>
+            </div>
                 </div>
               )}
             </div>
@@ -1221,13 +1239,13 @@ export default function Home() {
                 <span className="text-white font-medium">Sponsored Content</span>
                 <span className="text-gray-400">
                   {mobileFilterGroup === 'sponsoredContent' ? '−' : '+'}
-                </span>
+              </span>
               </button>
               {mobileFilterGroup === 'sponsoredContent' && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-gray-600 rounded-lg shadow-lg z-10">
                   <div className="p-2 space-y-1">
                     {filterOptions.sponsoredContent.map((content) => (
-                      <button
+              <button
                         key={content}
                         onClick={() => handleFilterSelect('sponsoredContent', content)}
                         className={`block w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
@@ -1237,11 +1255,11 @@ export default function Home() {
                         }`}
                       >
                         {content}
-                      </button>
+              </button>
                     ))}
-                  </div>
-                </div>
-              )}
+            </div>
+          </div>
+        )}
             </div>
           </div>
         </div>
@@ -1258,15 +1276,15 @@ export default function Home() {
         {/* Global Loading Overlay - only covers videos section */}
         {globalLoading && <GlobalLoadingOverlay />}
         
-        {filteredVideos.length === 0 ? (
+        {(isMdUp ? filteredVideos.length : Math.min(displayedVideos.length, filteredVideos.length)) === 0 ? (
           <div className="text-center py-12">
             <p className="text-base font-bold text-gray-400">No Matches</p>
           </div>
         ) : (
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-            {filteredVideos.map((video) => (
-              <div key={video._id} className="break-inside-avoid bg-[#1a1a1a] rounded-lg overflow-hidden shadow-lg border border-[#333]">
-                {/* Video Embed */}
+        <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+          {(isMdUp ? filteredVideos : displayedVideos).map((video) => (
+            <div key={video._id} className="break-inside-avoid bg-[#1a1a1a] rounded-lg overflow-hidden shadow-lg border border-[#333]">
+              {/* Video Embed */}
                 {video.platform === "TikTok" ? (
                   <div className="w-full bg-[#1a1a1a] flex justify-center items-start" style={{ 
                     minHeight: 'calc(min(323px, 85vw) * 16/9)',
@@ -1281,72 +1299,82 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                <div className="w-full">
-                  {renderVideo(video)}
-                </div>
+              <div className="w-full">
+                {renderVideo(video)}
+              </div>
                 )}
-                
-                {/* Video Info - Always render for all video types */}
-                <div className="p-4">
-                  {/* Platform and User */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        video.platform === 'Youtube' ? 'bg-red-600' :
-                        video.platform === 'TikTok' ? 'bg-black' :
-                        'bg-gradient-to-r from-purple-500 to-pink-500'
-                      }`}>
-                        {video.platform}
-                      </span>
-                      <span className="text-white font-medium">{getUserInfo(video)}</span>
-                    </div>
-                    <div className="text-gray-400 text-sm">
-                      {video.views.toLocaleString()} views
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-white font-medium mb-3 line-clamp-2">{video.title}</h3>
-
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
-                      {video.category}
-                    </span>
-                    <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
-                      {video.focus}
-                    </span>
-                    <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
-                      {video.mood}
-                    </span>
-                    {video.sponsoredContent && (
-                      <span className="bg-yellow-600 text-black px-2 py-1 rounded text-xs font-medium">
-                        {video.sponsoredContent}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Rating */}
+              
+              {/* Video Info - Always render for all video types */}
+              <div className="p-4">
+                {/* Platform and User */}
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center">
-                      {[...Array(5)].map((_, i) => (
-                        <svg
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < Math.floor(video.rating / 2) ? 'text-yellow-400' : 'text-gray-600'
-                          }`}
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
-                    </div>
-                    <span className="text-gray-400 text-sm">{video.rating}/10</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      video.platform === 'Youtube' ? 'bg-red-600' :
+                      video.platform === 'TikTok' ? 'bg-black' :
+                      'bg-gradient-to-r from-purple-500 to-pink-500'
+                    }`}>
+                      {video.platform}
+                    </span>
+                    <span className="text-white font-medium">{getUserInfo(video)}</span>
                   </div>
+                  <div className="text-gray-400 text-sm">
+                    {video.views.toLocaleString()} views
+                  </div>
+                </div>
+
+                {/* Title */}
+                <h3 className="text-white font-medium mb-3 line-clamp-2">{video.title}</h3>
+
+                {/* Tags */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
+                    {video.category}
+                  </span>
+                  <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
+                    {video.focus}
+                  </span>
+                  <span className="bg-[#333] text-gray-300 px-2 py-1 rounded text-xs">
+                    {video.mood}
+                  </span>
+                  {video.sponsoredContent && (
+                    <span className="bg-yellow-600 text-black px-2 py-1 rounded text-xs font-medium">
+                      {video.sponsoredContent}
+                    </span>
+                  )}
+                </div>
+
+                {/* Rating */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <svg
+                        key={i}
+                        className={`w-4 h-4 ${
+                          i < Math.floor(video.rating / 2) ? 'text-yellow-400' : 'text-gray-600'
+                        }`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <span className="text-gray-400 text-sm">{video.rating}/10</span>
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+        )}
+        {!isMdUp && displayedVideos.length < filteredVideos.length && (
+          <div className="flex justify-center py-6">
+            <button
+              onClick={loadMoreMobile}
+              className="px-4 py-2 border-2 border-white text-white font-bold rounded-full hover:bg-white hover:text-black transition-colors"
+            >
+              Load more
+            </button>
           </div>
         )}
       </div>
