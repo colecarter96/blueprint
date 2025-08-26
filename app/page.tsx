@@ -39,20 +39,54 @@ const filterOptions = {
   sponsoredContent: ["Goods", "Services", "Events", "None"]
 };
 
-// TikTok Video Component - Simplified and Reliable
+// Lazy visibility hook for heavy embeds
+function useInViewportTrigger(options: IntersectionObserverInit = { rootMargin: '600px 0px', threshold: 0.01 }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry && entry.isIntersecting) {
+        setShouldLoad(true);
+        observer.disconnect();
+      }
+    }, options);
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [options]);
+  return [ref, shouldLoad] as const;
+}
+
+// TikTok Video Component - Lazy injection to reduce mobile memory
 function TikTokVideo({ video }: { video: Video }) {
   const [isLoading, setIsLoading] = useState(true);
+  const [containerRef, shouldLoad] = useInViewportTrigger();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Shorter loading timeout for initial page load
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-
+    const timer = setTimeout(() => setIsLoading(false), 500);
     return () => clearTimeout(timer);
   }, [video._id]);
 
-  // If we have full embed HTML, use it; otherwise show fallback
+  useEffect(() => {
+    if (shouldLoad && !mounted) {
+      setMounted(true);
+    }
+  }, [shouldLoad, mounted]);
+
+  // When we mount the embed HTML, append TikTok script to hydrate
+  useEffect(() => {
+    if (mounted) {
+      try {
+        const script = document.createElement('script');
+        script.src = 'https://www.tiktok.com/embed.js';
+        script.async = true;
+        document.body.appendChild(script);
+      } catch {}
+    }
+  }, [mounted]);
+
   if (!video.tiktokEmbed || video.tiktokEmbed.trim() === '') {
     return (
       <div className="w-full bg-[#1a1a1a] flex items-center justify-center text-center" style={{ 
@@ -82,7 +116,6 @@ function TikTokVideo({ video }: { video: Video }) {
       maxHeight: '1151px',
       height: 'clamp(620px, 70.8vh, 974px)'
     }}>
-      {/* Loading State */}
       {isLoading && (
         <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a] text-white">
           <div className="text-center">
@@ -92,15 +125,39 @@ function TikTokVideo({ video }: { video: Video }) {
           </div>
         </div>
       )}
-      
-      {/* TikTok Embed - Use full embed HTML */}
-      <div
-        className={`w-full h-full ${isLoading ? 'hidden' : ''}`}
-        style={{ backgroundColor: '#1a1a1a' }}
-        dangerouslySetInnerHTML={{
-          __html: video.tiktokEmbed
-        }}
-      />
+      <div ref={containerRef} className="w-full h-full" style={{ backgroundColor: '#1a1a1a' }}>
+        {mounted && (
+          <div className="w-full h-full" dangerouslySetInnerHTML={{ __html: video.tiktokEmbed }} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Instagram lazy component to respect Hooks rules
+function InstagramLazy({ video, onError }: { video: Video; onError: () => void }) {
+  const [ref, shouldLoad] = useInViewportTrigger({ rootMargin: '600px 0px', threshold: 0.01 });
+  useEffect(() => {
+    if (shouldLoad) {
+      try {
+        // Ensure instagram script exists and process
+        if (!document.querySelector('script[src*="instagram.com/embed.js"]')) {
+          const s = document.createElement('script');
+          s.src = '//www.instagram.com/embed.js';
+          s.async = true;
+          document.body.appendChild(s);
+        }
+        if (window.instgrm && window.instgrm.Embeds && typeof window.instgrm.Embeds.process === 'function') {
+          window.instgrm.Embeds.process();
+        }
+      } catch {}
+    }
+  }, [shouldLoad]);
+  return (
+    <div ref={ref as React.RefObject<HTMLDivElement>}>
+      {shouldLoad && (
+        <div dangerouslySetInnerHTML={{ __html: video.instaEmbed }} onError={onError} />
+      )}
     </div>
   );
 }
@@ -725,15 +782,8 @@ export default function Home() {
           </div>
         );
       }
-      
-      return (
-        <div
-          dangerouslySetInnerHTML={{
-            __html: video.instaEmbed
-          }}
-          onError={() => markEmbedFailed(videoId)}
-        />
-      );
+      // Lazy mount Instagram embed when near viewport
+      return <InstagramLazy key={video._id} video={video} onError={() => markEmbedFailed(videoId)} />;
     }
     return <div>Unsupported platform</div>;
   };
