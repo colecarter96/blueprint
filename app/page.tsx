@@ -822,7 +822,7 @@ export default function Home() {
           onKeyDown={handleSearchKey}
           autoComplete="off"
           placeholder="Search titles, creators, categories..."
-          className="flex-1 bg-transparent outline-none placeholder-gray-400 text-white font-bold"
+          className="flex-1 pl-2 bg-transparent outline-none placeholder-gray-400 text-white font-bold"
         />
         <button
           type="button"
@@ -831,7 +831,7 @@ export default function Home() {
           aria-label="Search"
           className="ml-2 text-white"
         >
-          🔍
+          Search
         </button>
         {searchQuery && (
           <button
