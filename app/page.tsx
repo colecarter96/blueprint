@@ -832,7 +832,7 @@ export default function Home() {
                       key={category}
                       className="block w-full text-left text-3xl font-bold text-gray-500"
                     >
-                      {category}
+                      {category} 
                     </button>
                   ))}
                 </div>
