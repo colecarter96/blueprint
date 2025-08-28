@@ -42,7 +42,7 @@ function parseNumber(input, fallback = undefined) {
 }
 
 function normalizeMood(mood) {
-  if (!mood) return 'Calm';
+  if (!mood) return '';
   const m = mood.trim();
   if (m === 'Relaxed/Calm') return 'Calm';
   const allowed = ['Calm', 'High Energy', 'Emotional', 'Funny/Lighthearted', 'Dramatic/Suspenseful'];
@@ -50,7 +50,7 @@ function normalizeMood(mood) {
 }
 
 function normalizeFocus(focus) {
-  if (!focus) return 'Tech + Gaming';
+  if (!focus) return '';
   let f = focus.trim();
   if (f === 'Music') f = 'Music + Culture';
   const allowed = ['Sports', 'Fashion', 'Beauty', 'Health + Wellness', 'Tech + Gaming', 'Travel + Adventure', 'Music + Culture', 'Finance'];
@@ -98,7 +98,7 @@ async function importFromJson(jsonPath) {
           user: rawUser,
           views: parseNumber(row.views, 0) ?? 0,
           likes: parseNumber(row.likes, undefined),
-          category: row.category?.trim() || 'Lifestyle',
+          category: row.category?.trim() || '',
           focus: normalizeFocus(row.focus),
           mood: normalizeMood(row.mood),
           sponsoredContent: row.sponsoredContent?.trim() || null,
