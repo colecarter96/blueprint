@@ -21,6 +21,7 @@ interface Video {
   title: string;
   user: string;
   views: number;
+  likes?: number;
   category: "Cinematic/Storytelling" | "Comedy/Humor" | "Educational" | "Lifestyle" | "Trends/Viral";
   focus: "Sports" | "Fashion" | "Beauty" | "Health + Wellness" | "Tech + Gaming" | "Travel + Adventure" | "Music + Culture" | "Finance";
   mood: "Calm" | "High Energy" | "Emotional" | "Funny/Lighthearted" | "Dramatic/Suspenseful";
@@ -30,6 +31,15 @@ interface Video {
   instaEmbed: string;
   tiktokEmbed: string;
 }
+
+// Platform helpers (case-insensitive handling)
+const platformKind = (p: string) => {
+  const k = (p || "").toLowerCase();
+  if (k === "youtube") return "youtube" as const;
+  if (k === "tiktok") return "tiktok" as const;
+  if (k === "instagram") return "instagram" as const;
+  return "other" as const;
+};
 
 // Filter options
 const filterOptions = {
@@ -625,7 +635,7 @@ export default function Home() {
   const fetchVideos = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/videos');
+      const response = await fetch('/api/videos?limit=200');
       if (!response.ok) {
         throw new Error('Failed to fetch videos');
       }
@@ -723,7 +733,7 @@ export default function Home() {
     const videoId = video._id;
     const hasFailed = embedFailures.has(videoId);
     
-    if (video.platform === "Youtube") {
+    if (platformKind(video.platform) === "youtube") {
       const youtubeId = getYouTubeVideoId(video.url);
       if (!youtubeId) return <div>Invalid YouTube URL</div>;
       
@@ -757,7 +767,7 @@ export default function Home() {
           onError={() => markEmbedFailed(videoId)}
         />
       );
-    } else if (video.platform === "TikTok") {
+    } else if (platformKind(video.platform) === "tiktok") {
       if (hasFailed) {
         return (
           <div className="w-full bg-[#1a1a1a] flex items-center justify-center text-center" style={{ 
@@ -780,7 +790,7 @@ export default function Home() {
       }
       
       return <TikTokVideo key={video._id} video={video} />;
-    } else if (video.platform === "Instagram") {
+    } else if (platformKind(video.platform) === "instagram") {
       if (hasFailed) {
         return (
           <div className="w-full bg-[#1a1a1a] flex items-center justify-center text-center" style={{ 
@@ -1310,16 +1320,21 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      video.platform === 'Youtube' ? 'bg-red-600' :
-                      video.platform === 'TikTok' ? 'bg-black' :
-                      'bg-gradient-to-r from-purple-500 to-pink-500'
+                      platformKind(video.platform) === 'youtube' ? 'bg-red-600' :
+                      platformKind(video.platform) === 'tiktok' ? 'bg-black' :
+                      platformKind(video.platform) === 'instagram' ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gray-700'
                     }`}>
                       {video.platform}
                     </span>
                     <span className="text-white font-medium">{getUserInfo(video)}</span>
                   </div>
                   <div className="text-gray-400 text-sm">
-                    {video.views.toLocaleString()} views
+                    {platformKind(video.platform) === 'youtube' && (
+                      <>{video.views.toLocaleString()} views</>
+                    )}
+                    {platformKind(video.platform) !== 'youtube' && typeof video.likes === 'number' && (
+                      <>{video.likes.toLocaleString()} likes</>
+                    )}
                   </div>
                 </div>
 
