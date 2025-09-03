@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+
+// Client-only Auth button component
+const AuthEntry = dynamic(() => import('./components/AuthButton'), { ssr: false });
 
 // TypeScript declarations for global objects
 declare global {
@@ -182,7 +186,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [isMdUp, setIsMdUp] = useState(false);
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  // const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [mobileFilterGroup, setMobileFilterGroup] = useState<string | null>(null);
   const [orientationFilter, setOrientationFilter] = useState<"all" | "vertical" | "horizontal">("all");
   const [globalLoading, setGlobalLoading] = useState(false);
@@ -1012,7 +1016,7 @@ export default function Home() {
         <div className="flex-1 flex justify-center">
           {isMdUp && <SearchBar />}
         </div>
-        {/* Orientation Toggle */}
+        {/* Orientation Toggle + Auth */}
         <div className="flex items-center gap-2">
           <div className="flex bg-[#1a1a1a] rounded-lg p-1">
             <button
@@ -1045,6 +1049,12 @@ export default function Home() {
             >
               Horizontal
             </button>
+          </div>
+          {/* Auth Button */}
+          <div className="ml-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* Dynamically import to avoid SSR issues */}
+            <AuthEntry />
           </div>
         </div>
       </header>
