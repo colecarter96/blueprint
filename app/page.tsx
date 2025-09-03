@@ -4,13 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { db } from "../lib/firebaseClient";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { useAuth } from "./components/AuthProvider";
 
 // Client-only Auth button component
 const AuthEntry = dynamic(() => import('./components/AuthButton'), { ssr: false });
 
 function AddToBlueprintButton({ videoId }: { videoId: string }) {
   const [adding, setAdding] = useState(false);
-  const { useAuth } = require('./components/AuthProvider');
   const { user } = useAuth();
 
   const onAdd = async () => {

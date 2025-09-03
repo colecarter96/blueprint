@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useAuth } from "../components/AuthProvider";
 import { collection, deleteDoc, doc, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "../../lib/firebaseClient";
@@ -181,16 +182,13 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-[#2a2a2a] text-white">
       <header className="p-6 flex items-center justify-between">
         <div className="flex items-center">
-          <a href="/" aria-label="Go home">
-            <img 
-              src="/blueprintB.svg" 
-              alt="Blueprint" 
-              className="h-6 w-auto sm:h-7 md:h-8"
-            />
-          </a>
+          <Link href="/" aria-label="Go home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/blueprintB.svg" alt="Blueprint" className="h-6 w-auto sm:h-7 md:h-8" />
+          </Link>
         </div>
         <div className="flex items-center gap-2">
-          <a href="/" className="px-3 py-1 text-sm rounded border border-white text-white hover:bg-white hover:text-black transition">Back to Home</a>
+          <Link href="/" className="px-3 py-1 text-sm rounded border border-white text-white hover:bg-white hover:text-black transition">Back to Home</Link>
           <div className="ml-1">
             <AuthEntry />
           </div>

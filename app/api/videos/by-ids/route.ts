@@ -11,10 +11,11 @@ export async function GET(req: NextRequest) {
     const ids = idsParam.split(",").map((s) => s.trim()).filter(Boolean);
     const videos = await Video.find({ _id: { $in: ids } }).lean();
     // preserve input order
-    const order = new Map(ids.map((id, idx) => [id, idx] as const));
-    videos.sort((a: any, b: any) => (order.get(String(a._id)) ?? 0) - (order.get(String(b._id)) ?? 0));
+    const order = new Map<string, number>(ids.map((id, idx) => [id, idx] as const));
+    type LeanVideo = { _id: { toString(): string } } & Record<string, unknown>;
+    (videos as LeanVideo[]).sort((a, b) => (order.get(String(a._id)) ?? 0) - (order.get(String(b._id)) ?? 0));
     return NextResponse.json(videos, { status: 200 });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch videos" }, { status: 500 });
   }
 }
