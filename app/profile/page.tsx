@@ -24,6 +24,8 @@ type Video = {
   tiktokEmbed: string;
 };
 
+type FavoriteDoc = { videoId?: string; createdAt?: unknown };
+
 function platformKind(p: string) {
   const k = (p || "").toLowerCase();
   if (k === "youtube") return "youtube" as const;
@@ -101,7 +103,7 @@ export default function ProfilePage() {
       const snap = await getDocs(q);
       const favs: { id: string; videoId: string }[] = [];
       snap.forEach((d) => {
-        const v = d.data() as any;
+        const v = d.data() as FavoriteDoc;
         if (v?.videoId) favs.push({ id: d.id, videoId: v.videoId });
       });
       setFavorites(favs);
@@ -159,7 +161,7 @@ export default function ProfilePage() {
               strokeWidth="12.931"
               strokeDasharray="400"
               strokeDashoffset="400"
-              style={{ animation: 'draw 3s ease-in-out infinite' as any }}
+              style={{ animation: 'draw 3s ease-in-out infinite' as unknown as string }}
             />
           </g>
           <style>{`@keyframes draw{0%{stroke-dashoffset:400;opacity:.3}50%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:-400;opacity:.3}}`}</style>
@@ -319,7 +321,7 @@ function RemoveFromBlueprintButton({ videoId }: { videoId: string }) {
       const snap = await getDocs(col);
       let deleted = false;
       for (const d of snap.docs) {
-        const v = d.data() as any;
+        const v = d.data() as FavoriteDoc;
         if (v?.videoId === videoId && !deleted) {
           await deleteDoc(doc(db, `users/${user.uid}/favorites/${d.id}`));
           deleted = true;
