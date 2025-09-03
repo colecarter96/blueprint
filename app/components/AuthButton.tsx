@@ -19,7 +19,7 @@ export default function AuthButton() {
       <>
         <button
           onClick={() => setOpen(true)}
-          className="px-3 py-1 text-sm rounded border border-white text-white hover:bg-white hover:text-black transition"
+          className="px-3 py-2 text-sm rounded border bg-white text-black font-medium hover:bg-white hover:text-black transition"
         >
           Sign in
         </button>
