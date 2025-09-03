@@ -6,6 +6,7 @@ export interface IVideo {
   title: string;
   user: string;
   views: number;
+  likes?: number;
   category: "Cinematic/Storytelling" | "Comedy/Humor" | "Educational" | "Lifestyle" | "Trends/Viral";
   focus: "Sports" | "Fashion" | "Beauty" | "Health + Wellness" | "Tech + Gaming" | "Travel + Adventure" | "Music + Culture" | "Finance";
   mood: "Calm" | "High Energy" | "Emotional" | "Funny/Lighthearted" | "Dramatic/Suspenseful";
@@ -37,6 +38,11 @@ const VideoSchema = new mongoose.Schema<IVideo>(
       type: Number,
       required: true,
       default: 0,
+    },
+    likes: {
+      type: Number,
+      required: false,
+      default: undefined,
     },
     category: {
       type: String,

@@ -1,14 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import Video from "@/models/Video";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
-    
+    const { searchParams } = new URL(req.url);
+    const limitParam = parseInt(searchParams.get("limit") || "50", 10);
+    const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(500, limitParam)) : 50;
+
     const videos = await Video.find({})
-      .sort({ createdAt: -1 }) // Most recent first
-      .limit(50); // Limit to 50 videos for performance
+      .sort({ _id: -1 })
+      .limit(limit);
     
     return NextResponse.json(videos);
   } catch (error) {
