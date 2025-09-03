@@ -2,9 +2,44 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { db } from "../lib/firebaseClient";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 // Client-only Auth button component
 const AuthEntry = dynamic(() => import('./components/AuthButton'), { ssr: false });
+
+function AddToBlueprintButton({ videoId }: { videoId: string }) {
+  const [adding, setAdding] = useState(false);
+  const { useAuth } = require('./components/AuthProvider');
+  const { user } = useAuth();
+
+  const onAdd = async () => {
+    if (!user) {
+      alert('Please sign in to add to your blueprint.');
+      return;
+    }
+    try {
+      setAdding(true);
+      await addDoc(collection(db, `users/${user.uid}/favorites`), {
+        videoId,
+        createdAt: serverTimestamp(),
+      });
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={onAdd}
+      disabled={adding}
+      className="px-2 py-1 border border-white rounded text-white text-xs hover:bg-white hover:text-black disabled:opacity-60"
+      title="Add to your blueprint"
+    >
+      +
+    </button>
+  );
+}
 
 // TypeScript declarations for global objects
 declare global {
@@ -1338,13 +1373,15 @@ export default function Home() {
                     </span>
                     <span className="text-white font-medium">{getUserInfo(video)}</span>
                   </div>
-                  <div className="text-gray-400 text-sm">
+                  <div className="flex items-center gap-3 text-gray-400 text-sm">
                     {platformKind(video.platform) === 'youtube' && (
                       <>{video.views.toLocaleString()} views</>
                     )}
                     {platformKind(video.platform) !== 'youtube' && typeof video.likes === 'number' && (
                       <>{video.likes.toLocaleString()} likes</>
                     )}
+                    {/* Add-to-blueprint button */}
+                    <AddToBlueprintButton videoId={video._id} />
                   </div>
                 </div>
 
