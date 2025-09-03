@@ -49,6 +49,13 @@ export default function AuthButton() {
       {open && (
         <div className="absolute right-0 mt-2 bg-[#1a1a1a] border border-white rounded shadow-lg w-40 z-50">
           <div className="px-3 py-2 text-sm text-gray-300 truncate">{displayName}</div>
+          <a
+            href="/profile"
+            className="block w-full text-left px-3 py-2 text-sm hover:bg-white hover:text-black"
+            onClick={() => setOpen(false)}
+          >
+            View profile
+          </a>
           <button
             onClick={async () => { await signOut(); setOpen(false); }}
             className="w-full text-left px-3 py-2 text-sm hover:bg-white hover:text-black"
