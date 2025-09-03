@@ -56,8 +56,9 @@ export default function SignInModal({ open, onClose }: Props) {
         await signUpWithEmail(email, password);
       }
       onClose();
-    } catch (err: any) {
-      setError(err?.message || "Authentication failed");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Authentication failed";
+      setError(msg);
     } finally {
       setBusy(false);
     }
@@ -69,8 +70,9 @@ export default function SignInModal({ open, onClose }: Props) {
     try {
       await signInWithGoogle();
       onClose();
-    } catch (err: any) {
-      setError(err?.message || "Google sign-in failed");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Google sign-in failed";
+      setError(msg);
     } finally {
       setBusy(false);
     }
@@ -89,8 +91,9 @@ export default function SignInModal({ open, onClose }: Props) {
       const continueUrl = typeof window !== "undefined" ? window.location.origin : "";
       await sendPasswordResetEmail(auth, trimmed, { url: continueUrl });
       setResetMsg("Password reset email sent. Check your inbox.");
-    } catch (err: any) {
-      setError(err?.message || "Failed to send reset email");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send reset email";
+      setError(msg);
     } finally {
       setBusy(false);
     }
