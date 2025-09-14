@@ -936,7 +936,7 @@ export default function Home() {
         </header>
 
         {/* Filters */}
-        <div className="mb-8">
+        <div className="mb-8 lg:px-6">
           {/* Desktop Filters */}
           <div className="hidden lg:block">
             <div className="grid grid-cols-4 gap-8 justify-items-center">
@@ -947,7 +947,7 @@ export default function Home() {
                   {filterOptions.category.map((category) => (
                     <button
                       key={category}
-                      className="block w-full text-left text-3xl font-bold text-gray-500"
+                      className="block w-full text-left text-2xl xl:text-3xl font-bold text-gray-500"
                     >
                       {category}
                     </button>
@@ -962,7 +962,7 @@ export default function Home() {
                   {filterOptions.focus.map((focus) => (
                     <button
                       key={focus}
-                      className="block w-full text-left text-3xl font-bold text-gray-500"
+                      className="block w-full text-left text-2xl xl:text-3xl font-bold text-gray-500"
                     >
                       {focus}
                     </button>
@@ -977,7 +977,7 @@ export default function Home() {
                   {filterOptions.mood.map((mood) => (
                     <button
                       key={mood}
-                      className="block w-full text-left text-3xl font-bold text-gray-500"
+                      className="block w-full text-left text-2xl xl:text-3xl font-bold text-gray-500"
                     >
                       {mood}
                     </button>
@@ -992,7 +992,7 @@ export default function Home() {
                   {filterOptions.sponsoredContent.map((content) => (
                     <button
                       key={content}
-                      className="block w-full text-left text-3xl font-bold text-gray-500"
+                      className="block w-full text-left text-2xl xl:text-3xl font-bold text-gray-500"
                     >
                       {content}
                     </button>
@@ -1100,7 +1100,7 @@ export default function Home() {
       )}
 
       {/* Filters */}
-      <div className="mb-8">
+      <div className="mb-8 lg:px-6">
         {/* Desktop Filters */}
         <div className="hidden lg:block">
           <div className="grid grid-cols-4 gap-8 justify-items-center">
@@ -1112,7 +1112,7 @@ export default function Home() {
                   <button
                     key={category}
                     onClick={() => handleFilterSelect('category', category)}
-                    className={`block w-full text-left text-3xl font-bold transition-colors ${
+                    className={`block w-full text-left text-2xl xl:text-3xl font-bold transition-colors ${
                       activeFilters.some(f => f.type === 'category' && f.value === category)
                         ? 'text-gray-400'
                         : 'text-white hover:text-gray-300'
@@ -1132,7 +1132,7 @@ export default function Home() {
                   <button
                     key={focus}
                     onClick={() => handleFilterSelect('focus', focus)}
-                    className={`block w-full text-left text-3xl font-bold transition-colors ${
+                    className={`block w-full text-left text-2xl xl:text-3xl font-bold transition-colors ${
                       activeFilters.some(f => f.type === 'focus' && f.value === focus)
                         ? 'text-gray-500'
                         : 'text-white hover:text-gray-300'
@@ -1152,7 +1152,7 @@ export default function Home() {
                   <button
                     key={mood}
                     onClick={() => handleFilterSelect('mood', mood)}
-                    className={`block w-full text-left text-3xl font-bold transition-colors ${
+                    className={`block w-full text-left text-2xl xl:text-3xl font-bold transition-colors ${
                       activeFilters.some(f => f.type === 'mood' && f.value === mood)
                         ? 'text-gray-500'
                         : 'text-white hover:text-gray-300'
@@ -1172,7 +1172,7 @@ export default function Home() {
                   <button
                     key={content}
                     onClick={() => handleFilterSelect('sponsoredContent', content)}
-                    className={`block w-full text-left text-3xl font-bold transition-colors ${
+                    className={`block w-full text-left text-2xl xl:text-3xl font-bold transition-colors ${
                       activeFilters.some(f => f.type === 'sponsoredContent' && f.value === content)
                         ? 'text-gray-500'
                         : 'text-white hover:text-gray-300'
