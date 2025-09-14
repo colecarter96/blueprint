@@ -33,7 +33,7 @@ function AddToBlueprintButton({ videoId }: { videoId: string }) {
     <button
       onClick={onAdd}
       disabled={adding}
-      className="px-2 py-1 border border-white rounded text-white text-xs hover:bg-white hover:text-black disabled:opacity-60"
+      className="px-2 py-0 border border-white rounded text-white text-lg md:text-xl hover:bg-white hover:text-black disabled:opacity-60"
       title="Add to your blueprint"
     >
       +
